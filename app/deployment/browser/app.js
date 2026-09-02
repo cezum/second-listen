@@ -162,6 +162,83 @@ let lastEvent = null
 const pendingTools = []
 
 // --- microphones ---
+
+// --- semantic gate ---
+// The voice API only lets the agent take the floor once its end-of-turn model
+// decides the user finished, and then the agent needs ~2s before audio comes
+// out. A speaker who pauses under ~2.5s between sentences buries every chance
+// to interject, so the debrief becomes a monologue and the questions get
+// dumped at the end. The gate watches the live user transcript and, at a
+// finished-sentence boundary inside a long run of speech, briefly stops
+// sending mic audio. The forced silence ends the turn, the agent answers, and
+// the mic reopens as soon as the reply starts. Chinese sentence punctuation
+// only (a '.' also matches decimals like 3.2, so it is excluded).
+function sentEnds(text) {
+  let n = 0
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i]
+    if (ch === '\u3002' || ch === '\uff01' || ch === '\uff1f' || ch === '\u2026') n++
+  }
+  return n
+}
+const isSentEnd = (ch) => ch === '\u3002' || ch === '\uff01' || ch === '\uff1f' || ch === '\u2026'
+const GATE = {
+  sentences: 2,   // finished sentences in the current run before we may fire
+  chars: 40,      // and at least this much speech since the agent last spoke
+  afterAgentMs: 6000, // agent must have last spoken at least this long ago
+  gapMs: 3000,    // never fire twice within this window
+  muteMs: 3000,   // hold the mic quiet: end-of-turn (~0.5s) + reply latency
+}
+let gate = {
+  sentences: 0,  // terminal-sentence ends seen since the agent last spoke
+  chars: 0,      // user text growth since the agent last spoke
+  prevLen: -1,   // length of the previous user partial we saw
+  prevEnds: 0,   // sentence-end count of that partial
+  agentEndAt: 0, // when the last agent reply finished
+  lastFireAt: 0, // when the gate last fired
+  mutedUntil: 0, // input.audio suppressed until this epoch ms
+  busy: false,   // agent reply is in progress
+}
+const gateMuted = () => Date.now() < gate.mutedUntil
+function gateNote(text) {
+  // text is the full user partial so far and replaces the previous one. A
+  // large shrink means the previous partial was committed (new turn), so per-
+  // partial tracking restarts while the accumulated run keeps counting across
+  // the user's continuous speech. Returns true when the gate fires.
+  const ends = sentEnds(text)
+  if (gate.prevLen < 0 || text.length < gate.prevLen - 10) {
+    gate.prevLen = text.length
+    gate.prevEnds = ends
+    return false
+  }
+  gate.chars += Math.max(0, text.length - gate.prevLen)
+  gate.sentences += Math.max(0, ends - gate.prevEnds)
+  gate.prevLen = text.length
+  gate.prevEnds = ends
+  const now = Date.now()
+  if (!isSentEnd(text[text.length - 1] || '')) return false
+  if (gate.busy) return false
+  if (gate.sentences < GATE.sentences || gate.chars < GATE.chars) return false
+  if (now - gate.agentEndAt < GATE.afterAgentMs) return false
+  if (now - gate.lastFireAt < GATE.gapMs) return false
+  gate.mutedUntil = now + GATE.muteMs
+  gate.lastFireAt = now
+  gate.sentences = 0
+  gate.chars = 0
+  gate.prevLen = text.length
+  gate.prevEnds = ends
+  return true
+}
+function gateReset() {
+  gate.sentences = 0
+  gate.chars = 0
+  gate.prevLen = -1
+  gate.prevEnds = 0
+  gate.agentEndAt = 0
+  gate.lastFireAt = 0
+  gate.mutedUntil = 0
+  gate.busy = false
+}
 // Labels stay empty until mic permission is granted, so this runs again after
 // getUserMedia.
 async function listMics() {
@@ -291,6 +368,9 @@ async function start() {
 
     // The API takes base64 inside JSON, not binary frames.
     capture.port.onmessage = ({ data }) => {
+      // Semantic gate: while muted we drop mic frames. The resulting silence
+      // makes the platform end the user's turn so the agent can answer.
+      if (gateMuted()) return
       if (!ready || ws.readyState !== 1) return
       const bytes = new Uint8Array(data)
       let binary = ''
@@ -348,6 +428,12 @@ async function start() {
 
         case 'reply.started':
           lastEvent = 'reply.started'
+          gate.busy = true
+          if (gateMuted()) {
+            // The agent is speaking: reopen the mic so the user can answer.
+            gate.mutedUntil = 0
+            logEvent('gate', 'mic open', 'reply started')
+          }
           setStatus('speaking')
           logEvent('down', msg.type)
           break
@@ -363,6 +449,10 @@ async function start() {
 
         case 'reply.done':
           lastEvent = 'reply.done'
+          gate.busy = false
+          gate.agentEndAt = Date.now()
+          gate.sentences = 0
+          gate.chars = 0
           setStatus('listening')
           if (msg.status === 'interrupted') {
             playback?.port.postMessage('stop')
@@ -377,6 +467,9 @@ async function start() {
         case 'transcript.user.delta':
           partial('you', msg.text)
           logEvent('down', msg.type, msg.text)
+          if (gateNote(msg.text || '')) {
+            logEvent('gate', 'semantic gate', 'mic muted ' + GATE.muteMs + 'ms')
+          }
           break
 
         // delta is the next word only, so it appends.
@@ -477,6 +570,7 @@ function stop() {
 function reset() {
   clearInterval(timer)
   clearPartials()
+  gateReset()
   open.forEach((run) => paint(run, true))
   open.clear()
   $('btn').disabled = false

@@ -100,6 +100,33 @@ the clean baseline you want before Round 1.
 
 ---
 
+## 0.4 Semantic gate (optional, front-end only)
+
+The voice API only hands the agent the floor after its end-of-turn model hears
+a pause, and the agent then needs ~2s to start talking. A speaker who pauses
+under ~2.5s buries every interjection, and the debrief collapses into a
+monologue with the questions dumped at the end (observed on 2026-09-02).
+
+`app.js` implements a **semantic gate** to fix that without changing the agent:
+it watches the live user transcript and, at a Chinese sentence boundary
+(`。！？…`) inside a long run of speech, briefly stops sending mic audio. The
+forced silence ends the turn, the agent answers, and the mic reopens the
+moment the reply starts. No server change, no agent change.
+
+Tuning knobs live at the top of `app.js` under `GATE`:
+`sentences` (fire after N finished sentences), `chars` (min speech since the
+agent last spoke), `afterAgentMs` (leave short Q&A answers alone), `gapMs`
+(no double fires), `muteMs` (how long the mic is held quiet — must cover
+end-of-turn ~0.5s + reply latency ~2.2s).
+
+To verify a run used the gate: open the Events pane and look for lines tagged
+`gate` (`semantic gate` = mic muted, `mic open` = reply started). Unit tests
+extract `gateNote`/`sentEnds` from `app.js` and replay transcript streams —
+see the commit message for the five scenarios (fires on 2-sentence monologue,
+ignores one-sentence answers, ignores comma-only rambling).
+
+---
+
 ## Round 1 — first debrief, English (~2 min)
 
 **Do:** press Start, then read the monologue from
