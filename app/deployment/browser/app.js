@@ -168,11 +168,11 @@ const pendingTools = []
 // decides the user finished, and then the agent needs ~2s before audio comes
 // out. A speaker who pauses under ~2.5s between sentences buries every chance
 // to interject, so the debrief becomes a monologue and the questions get
-// dumped at the end. The gate watches the live user transcript and, at a
+// dumped at the end (observed 2026-09-02: 94s of continuous speech, zero
+// interjections). The gate watches the live user transcript and, near a
 // finished-sentence boundary inside a long run of speech, briefly stops
 // sending mic audio. The forced silence ends the turn, the agent answers, and
-// the mic reopens as soon as the reply starts. Chinese sentence punctuation
-// only (a '.' also matches decimals like 3.2, so it is excluded).
+// the mic reopens as soon as the reply starts.
 function sentEnds(text) {
   let n = 0
   for (let i = 0; i < text.length; i++) {
@@ -182,31 +182,40 @@ function sentEnds(text) {
   return n
 }
 const isSentEnd = (ch) => ch === '\u3002' || ch === '\uff01' || ch === '\uff1f' || ch === '\u2026'
+function lastSentAt(text) {
+  for (let i = text.length - 1; i >= 0; i--) if (isSentEnd(text[i])) return i
+  return -1
+}
 const GATE = {
   sentences: 2,   // finished sentences in the current run before we may fire
   chars: 40,      // and at least this much speech since the agent last spoke
   afterAgentMs: 6000, // agent must have last spoken at least this long ago
   gapMs: 3000,    // never fire twice within this window
   muteMs: 3000,   // hold the mic quiet: end-of-turn (~0.5s) + reply latency
+  lateChars: 6,   // ...or this many chars after the last sentence end
+  forceMs: 15000, // failsafe: fire even without punctuation on a run this long
 }
 let gate = {
-  sentences: 0,  // terminal-sentence ends seen since the agent last spoke
-  chars: 0,      // user text growth since the agent last spoke
+  sentences: 0,  // sentence ends seen since the agent last spoke / last fire
+  chars: 0,      // user text growth in the same window
   prevLen: -1,   // length of the previous user partial we saw
   prevEnds: 0,   // sentence-end count of that partial
   agentEndAt: 0, // when the last agent reply finished
   lastFireAt: 0, // when the gate last fired
+  runStartAt: 0, // when the current run of user speech started
   mutedUntil: 0, // input.audio suppressed until this epoch ms
   busy: false,   // agent reply is in progress
 }
 const gateMuted = () => Date.now() < gate.mutedUntil
-function gateNote(text) {
+function gateNote(text, now) {
   // text is the full user partial so far and replaces the previous one. A
-  // large shrink means the previous partial was committed (new turn), so per-
-  // partial tracking restarts while the accumulated run keeps counting across
-  // the user's continuous speech. Returns true when the gate fires.
+  // large shrink means the previous partial was committed (new VAD turn), so
+  // per-partial tracking restarts while the run keeps counting across the
+  // user's continuous speech. now is injectable for tests.
+  if (now === undefined) now = Date.now()
   const ends = sentEnds(text)
   if (gate.prevLen < 0 || text.length < gate.prevLen - 10) {
+    if (gate.runStartAt === 0) gate.runStartAt = now
     gate.prevLen = text.length
     gate.prevEnds = ends
     return false
@@ -215,14 +224,23 @@ function gateNote(text) {
   gate.sentences += Math.max(0, ends - gate.prevEnds)
   gate.prevLen = text.length
   gate.prevEnds = ends
-  const now = Date.now()
-  if (!isSentEnd(text[text.length - 1] || '')) return false
   if (gate.busy) return false
-  if (gate.sentences < GATE.sentences || gate.chars < GATE.chars) return false
   if (now - gate.agentEndAt < GATE.afterAgentMs) return false
   if (now - gate.lastFireAt < GATE.gapMs) return false
+  // Three ways to fire: the partial ends right on a sentence stop; the user
+  // already spoke a few chars past a sentence end (punctuation may land in
+  // the middle of a delta frame, so tail-only checks miss it); or the run is
+  // simply so long that punctuation never came.
+  const tail = lastSentAt(text)
+  const past = text.length - 1 - tail
+  const mature = gate.sentences >= GATE.sentences && gate.chars >= GATE.chars
+  const fast = mature && tail === text.length - 1
+  const late = mature && tail >= 0 && past >= GATE.lateChars
+  const slow = gate.chars >= GATE.chars && now - gate.runStartAt >= GATE.forceMs
+  if (!fast && !late && !slow) return false
   gate.mutedUntil = now + GATE.muteMs
   gate.lastFireAt = now
+  gate.runStartAt = now
   gate.sentences = 0
   gate.chars = 0
   gate.prevLen = text.length
@@ -236,6 +254,7 @@ function gateReset() {
   gate.prevEnds = 0
   gate.agentEndAt = 0
   gate.lastFireAt = 0
+  gate.runStartAt = 0
   gate.mutedUntil = 0
   gate.busy = false
 }
@@ -453,6 +472,9 @@ async function start() {
           gate.agentEndAt = Date.now()
           gate.sentences = 0
           gate.chars = 0
+          gate.runStartAt = 0
+          gate.prevLen = -1
+          gate.prevEnds = 0
           setStatus('listening')
           if (msg.status === 'interrupted') {
             playback?.port.postMessage('stop')
@@ -468,7 +490,13 @@ async function start() {
           partial('you', msg.text)
           logEvent('down', msg.type, msg.text)
           if (gateNote(msg.text || '')) {
+            const at = (callStart ? (Date.now() - callStart) / 1000 : 0).toFixed(1)
             logEvent('gate', 'semantic gate', 'mic muted ' + GATE.muteMs + 'ms')
+            fetch('/api/gate', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ session_id: sessionId, at_seconds: Number(at), kind: 'fire' }),
+            }).catch(() => {})
           }
           break
 

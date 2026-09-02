@@ -18,6 +18,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parents[1]))
 LEDGER = HERE.parents[1] / "data" / "ledger.json"
+GATE_LOG = HERE.parents[1] / "data" / "gate_log.json"
 
 from lib import (ApiError, aai, load_env, publish_agent, read_agent,  # noqa: E402
                  required, stored_agent_id)
@@ -154,6 +155,27 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, b'{"ok":true,"status":"queued"}', "application/json")
             except (ValueError, OSError) as err:
                 self._send(400, json.dumps({"error": str(err)}).encode(), "application/json")
+            return
+        if path == "/api/gate":
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+                body = json.loads(self.rfile.read(length) or b"{}")
+                with LEDGER_LOCK:
+                    log = []
+                    if GATE_LOG.exists():
+                        log = json.loads(GATE_LOG.read_text(encoding="utf-8"))
+                    log.append({
+                        "at": datetime.now(timezone.utc).isoformat(),
+                        "session_id": body.get("session_id"),
+                        "at_seconds": body.get("at_seconds"),
+                        "kind": body.get("kind", "fire"),
+                    })
+                    GATE_LOG.write_text(
+                        json.dumps(log, ensure_ascii=False, indent=2), encoding="utf-8")
+                self._send(200, b'{"ok":true}', "application/json")
+            except (ValueError, OSError) as err:
+                self._send(400, json.dumps({"error": str(err)}).encode(),
+                           "application/json")
             return
         if path != "/api/ledger":
             self._send(404, b'{"error":"not found"}', "application/json")
