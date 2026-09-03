@@ -196,6 +196,8 @@ function lastSentAt(text) {
   return -1
 }
 const GATE = {
+  enabled: false, // A/B switch (2026-09-03): natural-pause turn-taking instead
+                  // of the semantic gate. Flip to true to re-enable the gate.
   sentences: 2,   // finished sentences in the current run before we may fire
   chars: 40,      // and at least this much speech since the agent last spoke
   afterAgentMs: 6000, // agent must have last spoken at least this long ago
@@ -219,6 +221,7 @@ let gate = {
 }
 const gateMuted = () => Date.now() < gate.mutedUntil
 function gateNote(text, now) {
+  if (!GATE.enabled) return false
   // text is the full user partial so far and replaces the previous one. A
   // large shrink means the previous partial was committed (new VAD turn), so
   // per-partial tracking restarts while the run keeps counting across the
@@ -318,6 +321,7 @@ function pollEnergy() {
 }
 
 function gateCheck() {
+  if (!GATE.enabled) return
   const now = Date.now()
   if (!gate.armed || gate.busy || gateMuted()) return
   if (now - gate.agentEndAt < GATE.afterAgentMs) return
