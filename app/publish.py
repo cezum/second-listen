@@ -12,8 +12,35 @@ phone number pointed at one picks up the change on the next call.
 import os
 import sys
 
-from lib import ApiError, load_env, publish_agent, read_agent, required
+from lib import ApiError, aai, ensure_agent, load_env, read_agent, required
 from history import apply_history
+
+
+def self_check(agent_id: str, local: dict) -> bool:
+    """Read the published agent back and compare it with the file.
+
+    A 200 from PUT only means the write was accepted. Without this, a prompt
+    that did not land looks like a successful publish and turns up later as an
+    agent still answering in last week's wording.
+    """
+    remote = aai(f"/agents/{agent_id}")
+    checks = (
+        ("name", remote.get("name"), local.get("name")),
+        ("system_prompt", remote.get("system_prompt"), local.get("system_prompt")),
+        ("tools", [t.get("name") for t in remote.get("tools", [])],
+         [t.get("name") for t in local.get("tools", [])]),
+    )
+    ok = True
+    for label, got, want in checks:
+        if got != want:
+            if label == "system_prompt":
+                print(f"  {label}: local {len(str(want))} chars, "
+                      f"remote {len(str(got))} chars")
+            else:
+                print(f"  {label}: local {want!r}, remote {got!r}")
+            ok = False
+    print(f"Self-check {'passed' if ok else 'FAILED'} - agent {agent_id} read back")
+    return ok
 
 
 def main() -> None:
@@ -24,14 +51,16 @@ def main() -> None:
     agent = read_agent(name)
     if apply_history(agent):
         print("Injected commitment check from data/history/")
-    result = publish_agent(agent, name=name)
+    result = ensure_agent(agent, name=name)
 
     verb = "Created" if result["created"] else "Updated"
     print(f'{verb} "{agent["name"]}" from agents/{name}.jsonc')
     print(f"{result['key']}={result['id']}")
-    if result["created"]:
-        print("Saved to .env." if result["saved"]
-              else f"Could not write .env. Set {result['key']} yourself to keep updating this agent.")
+    if not result["saved"]:
+        print(f"Could not write .env. Set {result['key']}={result['id']} yourself, "
+              "or the next run publishes another agent.")
+    if not self_check(result["id"], agent):
+        sys.exit(f"Published agent does not match agents/{name}.jsonc")
 
     # Tools with an http block are called by AssemblyAI, so they work in a
     # browser tab and on a phone call. Anything else needs whoever holds the

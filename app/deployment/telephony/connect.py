@@ -17,8 +17,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from lib import (ApiError, aai, load_env, publish_agent, read_agent,  # noqa: E402
-                 required, stored_agent_id, twilio)
+from lib import (ApiError, aai, ensure_agent, load_env, read_agent,  # noqa: E402
+                 required, twilio)
 
 TRUNKING = "https://trunking.twilio.com/v1/Trunks"
 # Where Twilio sends the call. A fixed AssemblyAI address, not something to
@@ -41,16 +41,14 @@ def main() -> None:
 
     core = f"https://api.twilio.com/2010-04-01/Accounts/{account}"
 
-    # 1. The agent. A published id means one already exists; otherwise publish
-    # the file now, which also writes the new id to .env.
+    # 1. The agent. Publish the file and take the id that comes back: it has
+    # just been verified live, so a number is never pointed at a deleted agent.
     name = os.environ.get("AGENT", "minimal")
-    agent_id = stored_agent_id(name)
-    if agent_id:
-        print(f"Agent: {agent_id} (already published)")
-    else:
-        agent = read_agent(name)
-        agent_id = publish_agent(agent, name=name)["id"]
-        print(f'Agent: {agent_id}, published "{agent["name"]}" from agents/{name}.jsonc')
+    agent = read_agent(name)
+    result = ensure_agent(agent, name=name)
+    agent_id = result["id"]
+    verb = "created" if result["created"] else "updated"
+    print(f'Agent: {agent_id} ({verb} from agents/{name}.jsonc)')
 
     # 2. The number has to be one you already bought in Twilio.
     quoted = urllib.parse.quote(number)

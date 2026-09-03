@@ -8,6 +8,7 @@ import json
 import os
 import re
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -250,6 +251,78 @@ def publish_agent(agent: dict, name: str = "", reuse_by_name: bool = False) -> d
     # An explicit AGENT_ID is the caller's choice, so it is not overwritten.
     saved = False if explicit else save_env(key, created["id"])
     return {"id": created["id"], "created": True, "saved": saved, "key": key}
+
+
+def _agent_exists(agent_id: str) -> bool:
+    """Whether the API will answer for this id, tolerating a flaky 404.
+
+    Reads here are not read-after-write consistent: an agent written moments
+    ago has come back 404, and the list endpoint has returned two disjoint
+    sets of agents on consecutive calls. One 404 does not mean the agent is
+    gone, so ask a few times before believing it.
+    """
+    for attempt in range(3):
+        try:
+            aai(f"/agents/{agent_id}")
+            return True
+        except ApiError as err:
+            if err.status != 404:
+                raise
+            if attempt < 2:
+                time.sleep(1)
+    return False
+
+
+def ensure_agent(agent: dict, name: str = "") -> dict:
+    """Publish the file and hand back an id the API has just confirmed is live.
+
+    An id in .env that points at a deleted agent is the usual source of a 404
+    at call time: the file still names it, every entry point trusts it, and
+    nothing notices until someone dials in. So check the stored id first, fall
+    back to an agent already on the account carrying this file's name (which
+    also stops repeat publishes from piling up duplicates), and create one only
+    when neither exists. The read-back at the end is the point: callers attach
+    this id to a phone number, so it has to be one the API answers for.
+    """
+    key = agent_id_key(name)
+    explicit = bool(os.environ.get("AGENT_ID"))
+    wanted = agent.get("name")
+    agent_id = stored_agent_id(name)
+
+    if agent_id and not _agent_exists(agent_id):
+        print(f"Stale {key}: agent {agent_id} no longer exists.")
+        agent_id = ""
+
+    created = False
+    if not agent_id and wanted:
+        for candidate in aai("/agents").get("agents", []):
+            if candidate.get("name") != wanted:
+                continue
+            # The list endpoint also returns deleted agents. Adopting one of
+            # those would put a dead id into .env — the exact 404 this
+            # function exists to prevent — so only trust one the API
+            # answers for.
+            if not _agent_exists(candidate["id"]):
+                print(f'Skipping listed "{wanted}" agent {candidate["id"][:8]}...: '
+                      "answers 404 (stale list entry).")
+                continue
+            agent_id = candidate["id"]
+            print(f'Reusing agent {agent_id}, already on the account as "{wanted}".')
+            break
+
+    if agent_id:
+        aai(f"/agents/{agent_id}", method="PUT", body=agent)
+    else:
+        agent_id = aai("/agents", method="POST", body=agent)["id"]
+        created = True
+
+    # An explicit AGENT_ID is the caller's choice, so it is not overwritten.
+    saved = False if explicit else save_env(key, agent_id)
+    # Nothing leaves here the API has not just answered for.
+    if not _agent_exists(agent_id):
+        raise ApiError(f"GET /agents/{agent_id}", 404,
+                       "agent could not be read back after publishing")
+    return {"id": agent_id, "created": created, "saved": saved, "key": key}
 
 
 # --- Twilio -----------------------------------------------------------------

@@ -20,8 +20,8 @@ sys.path.insert(0, str(HERE.parents[1]))
 LEDGER = HERE.parents[1] / "data" / "ledger.json"
 GATE_LOG = HERE.parents[1] / "data" / "gate_log.json"
 
-from lib import (ApiError, aai, load_env, publish_agent, read_agent,  # noqa: E402
-                 required, stored_agent_id)
+from lib import (ApiError, aai, ensure_agent, load_env, read_agent,  # noqa: E402
+                 required)
 from archive import DEFAULT_TRIALS_DIR, archive_async  # noqa: E402
 import transcribe  # noqa: E402
 import analyze  # noqa: E402
@@ -34,19 +34,18 @@ LEDGER_LOCK = threading.Lock()
 
 
 def resolve_agent() -> dict:
-    """A published id means the agent is managed elsewhere, so use it as it is."""
+    """Publish the file, then serve whatever id comes back.
+
+    This used to trust an id in .env as it stood and exit on a 404, so an agent
+    deleted in the dashboard read as a mystery failure on every later start.
+    The file is the source of truth, so publish it and let ensure_agent repair
+    a stale id or reuse one already on the account.
+    """
     name = os.environ.get("AGENT", "minimal")
-    known = stored_agent_id(name)
-    if known:
-        try:
-            agent = aai(f"/agents/{known}")
-        except ApiError as err:
-            sys.exit(f"Could not load agent {known}: {err}")
-        return {"id": known, "name": agent.get("name") or "Your agent"}
     agent = read_agent(name)
     apply_history(agent)
     try:
-        result = publish_agent(agent, name=name, reuse_by_name=True)
+        result = ensure_agent(agent, name=name)
     except ApiError as err:
         sys.exit(f"Could not publish agents/{name}.jsonc: {err}")
     verb = "Created" if result["created"] else "Updated"
