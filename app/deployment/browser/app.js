@@ -169,6 +169,15 @@ let sessionId = null
 // Client-side tools: hold results until the turn is idle (reply.done).
 let lastEvent = null
 const pendingTools = []
+// --- duplicate agent-burst guard ---
+// The platform can emit several back-to-back agent replies after a batch of
+// tool results (Round 1.9: four near-identical "Noted. Does the agreement..."
+// questions in a row). An agent reply that starts while no user speech has
+// happened since the last agent reply is a burst artifact: keep the first,
+// drop the rest until the user actually speaks again.
+let lastAgentReplyAt = 0
+let userSpokeSinceReply = true
+let suppressReply = false
 
 // --- microphones ---
 
@@ -546,6 +555,7 @@ async function start() {
 
         case 'input.speech.started':
           lastEvent = 'input.speech.started'
+          userSpokeSinceReply = true
           // Barge-in: empty the ring buffer so the agent stops mid-word.
           playback?.port.postMessage('stop')
           setStatus('listening')
@@ -554,6 +564,14 @@ async function start() {
 
         case 'reply.started':
           lastEvent = 'reply.started'
+          if (!userSpokeSinceReply && lastAgentReplyAt > 0) {
+            // No user speech since the last agent reply: back-to-back burst.
+            suppressReply = true
+            logEvent('down', 'reply.suppressed', 'no user turn between replies')
+            break
+          }
+          lastAgentReplyAt = Date.now()
+          userSpokeSinceReply = false
           gate.busy = true
           gate.armed = false
           if (gateMuted()) {
@@ -566,6 +584,7 @@ async function start() {
           break
 
         case 'reply.audio': {
+          if (suppressReply) break
           const raw = atob(msg.data)
           const bytes = new Uint8Array(raw.length)
           for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i)
@@ -576,6 +595,11 @@ async function start() {
 
         case 'reply.done':
           lastEvent = 'reply.done'
+          if (suppressReply) {
+            suppressReply = false
+            logEvent('down', 'reply.done', 'suppressed burst reply')
+            break
+          }
           gate.busy = false
           gate.agentEndAt = Date.now()
           gate.sentences = 0
@@ -595,6 +619,7 @@ async function start() {
 
         // text is the full transcript so far, so it replaces.
         case 'transcript.user.delta':
+          userSpokeSinceReply = true
           partial('you', msg.text)
           logEvent('down', msg.type, msg.text)
           gateNote(msg.text || '')
@@ -602,6 +627,7 @@ async function start() {
 
         // delta is the next word only, so it appends.
         case 'transcript.agent.delta':
+          if (suppressReply) break
           logEvent('down', msg.type, msg.delta)
           if (msg.reply_id && msg.reply_id === printedReply) break
           if (msg.reply_id !== liveReply) {
@@ -612,11 +638,13 @@ async function start() {
           break
 
         case 'transcript.user':
+          userSpokeSinceReply = true
           addLine('you', msg.text)
           logEvent('down', msg.type, msg.text)
           break
 
         case 'transcript.agent':
+          if (suppressReply) break
           printedReply = msg.reply_id ?? printedReply
           addLine('agent', msg.text)
           logEvent('down', msg.type, msg.text)
@@ -700,6 +728,9 @@ function reset() {
   stopEnergy()
   clearPartials()
   gateReset()
+  lastAgentReplyAt = 0
+  userSpokeSinceReply = true
+  suppressReply = false
   open.forEach((run) => paint(run, true))
   open.clear()
   $('btn').disabled = false
