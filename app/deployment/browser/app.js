@@ -68,9 +68,11 @@ const PLAYBACK_WORKLET = `
   class PlaybackProcessor extends AudioWorkletProcessor {
     constructor() {
       super();
-      // Jitter buffer: hold ~250ms of audio before playback starts and after
-      // each underrun, so bursts of late audio frames still play smoothly.
-      this._prime = Math.round(sampleRate * 0.25);
+      // Jitter buffer. First audio of a reply primes with a short fill so
+      // speech starts ~130ms sooner; after an underrun the buffer refills to
+      // the longer mark, so a burst of late frames still plays smoothly.
+      this._prime = Math.round(sampleRate * 0.12);
+      this._primeFull = Math.round(sampleRate * 0.25);
       this._primed = false;
       this._ring = new Float32Array(sampleRate * 30);
       this._writePos = 0;
@@ -87,6 +89,8 @@ const PLAYBACK_WORKLET = `
           this._writePos = this._readPos = this._available = 0;
           this._rsPos = this._rsPrev = 0;
           this._primed = false;
+          // A stop means the next audio is the start of a new reply.
+          this._prime = Math.round(sampleRate * 0.12);
           return;
         }
         const int16 = new Int16Array(e.data);
@@ -140,7 +144,12 @@ const PLAYBACK_WORKLET = `
           this._available--;
         } else {
           out[i] = 0;
-          this._drained = true;
+          if (!this._drained) {
+            // Ran dry mid-reply: the network is jittering, so ask for the
+            // longer fill before playback resumes.
+            this._drained = true;
+            this._prime = this._primeFull;
+          }
         }
       }
       if (this._available === 0) this._primed = false;
@@ -191,7 +200,8 @@ const GATE = {
   chars: 40,      // and at least this much speech since the agent last spoke
   afterAgentMs: 6000, // agent must have last spoken at least this long ago
   gapMs: 3000,    // never fire twice within this window
-  muteMs: 3000,   // hold the mic quiet: end-of-turn (~0.5s) + reply latency
+  muteMs: 2000,   // hold the mic quiet: end-of-turn (~0.5s) + reply latency;
+                  // reply.started reopens sooner, voice check reopens instantly
   lateChars: 6,   // ...or this many chars after the last sentence end
   forceMs: 15000, // failsafe: fire even without punctuation on a run this long
 }
@@ -205,6 +215,7 @@ let gate = {
   runStartAt: 0, // when the current run of user speech started
   mutedUntil: 0, // input.audio suppressed until this epoch ms
   busy: false,   // agent reply is in progress
+  armed: false,  // text conditions met; waiting for acoustic quiet to fire
 }
 const gateMuted = () => Date.now() < gate.mutedUntil
 function gateNote(text, now) {
@@ -227,25 +238,20 @@ function gateNote(text, now) {
   if (gate.busy) return false
   if (now - gate.agentEndAt < GATE.afterAgentMs) return false
   if (now - gate.lastFireAt < GATE.gapMs) return false
-  // Three ways to fire: the partial ends right on a sentence stop; the user
+  // Three ways to arm: the partial ends right on a sentence stop; the user
   // already spoke a few chars past a sentence end (punctuation may land in
   // the middle of a delta frame, so tail-only checks miss it); or the run is
-  // simply so long that punctuation never came.
+  // simply so long that punctuation never came. Arming does not mute -- the
+  // fire waits for real acoustic quiet in gateCheck, so continuous speech is
+  // never cut mid-word.
   const tail = lastSentAt(text)
   const past = text.length - 1 - tail
   const mature = gate.sentences >= GATE.sentences && gate.chars >= GATE.chars
   const fast = mature && tail === text.length - 1
   const late = mature && tail >= 0 && past >= GATE.lateChars
   const slow = gate.chars >= GATE.chars && now - gate.runStartAt >= GATE.forceMs
-  if (!fast && !late && !slow) return false
-  gate.mutedUntil = now + GATE.muteMs
-  gate.lastFireAt = now
-  gate.runStartAt = now
-  gate.sentences = 0
-  gate.chars = 0
-  gate.prevLen = text.length
-  gate.prevEnds = ends
-  return true
+  if (fast || late || slow) gate.armed = true
+  return false
 }
 function gateReset() {
   gate.sentences = 0
@@ -257,6 +263,95 @@ function gateReset() {
   gate.runStartAt = 0
   gate.mutedUntil = 0
   gate.busy = false
+  gate.armed = false
+}
+
+// --- gate v3: local voice energy ---
+// The transcript cannot show a pause (it only carries words), and muting on
+// text alone is what cut sentences in half: the user's next words fell into
+// the mute window and were lost. The raw mic stream is analysed locally
+// instead -- the analyser sits outside the send path, so it keeps hearing
+// while the mic is muted. An armed gate fires only after the user has been
+// quiet for ENERGY.silenceMs, and if they start talking again while muted,
+// the mic reopens at once.
+const ENERGY = {
+  pollMs: 40,      // analyser poll interval
+  fftSize: 2048,   // ~85ms of audio per RMS window at the 24kHz wire rate
+  floorMs: 500,    // the first moments after start calibrate the noise floor
+  mult: 3.5,       // voice = rms above the calibrated floor by this factor...
+  absMin: 0.004,   // ...and above this absolute level, so a hot mic still needs real signal
+  silenceMs: 300,  // quiet this long before an armed gate may fire
+}
+let energyAnalyser = null
+let energyBuf = null
+let energyTimer = null
+let noiseFloor = 0.002
+let lastVoiceAt = 0
+let sessionStartAt = 0
+
+function pollEnergy() {
+  if (!energyAnalyser) return
+  energyAnalyser.getFloatTimeDomainData(energyBuf)
+  let sum = 0
+  for (let i = 0; i < energyBuf.length; i++) sum += energyBuf[i] * energyBuf[i]
+  const rms = Math.sqrt(sum / energyBuf.length)
+  const now = Date.now()
+  if (now - sessionStartAt < ENERGY.floorMs) {
+    // Calibration window: nobody talks in the first half second after
+    // clicking Start, so the quietest reading stands in for the room.
+    if (rms < noiseFloor) noiseFloor = rms
+    return
+  }
+  if (rms >= Math.max(noiseFloor * ENERGY.mult, ENERGY.absMin)) {
+    lastVoiceAt = now
+    if (gateMuted()) {
+      // The user was not done: hand the floor back before the platform
+      // commits the turn and the agent starts over their sentence.
+      gate.mutedUntil = 0
+      logEvent('gate', 'mic open', 'voice during mute')
+    }
+    return
+  }
+  // Below the voice line it is room noise; follow it so the floor stays
+  // honest when a fan spins up or the room goes quieter.
+  noiseFloor = noiseFloor * 0.9 + rms * 0.1
+}
+
+function gateCheck() {
+  const now = Date.now()
+  if (!gate.armed || gate.busy || gateMuted()) return
+  if (now - gate.agentEndAt < GATE.afterAgentMs) return
+  if (now - gate.lastFireAt < GATE.gapMs) return
+  if (now - lastVoiceAt < ENERGY.silenceMs) return
+  gate.armed = false
+  gate.mutedUntil = now + GATE.muteMs
+  gate.lastFireAt = now
+  gate.runStartAt = now
+  gate.sentences = 0
+  gate.chars = 0
+  gate.prevLen = -1
+  gate.prevEnds = 0
+  const at = (callStart ? (Date.now() - callStart) / 1000 : 0).toFixed(1)
+  logEvent('gate', 'semantic gate', 'mic muted ' + GATE.muteMs + 'ms')
+  fetch('/api/gate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ session_id: sessionId, at_seconds: Number(at), kind: 'fire' }),
+  }).catch(() => {})
+}
+
+function startEnergy() {
+  sessionStartAt = lastVoiceAt = Date.now()
+  noiseFloor = 0.002
+  if (!energyTimer) {
+    energyTimer = setInterval(() => { pollEnergy(); gateCheck() }, ENERGY.pollMs)
+  }
+}
+
+function stopEnergy() {
+  clearInterval(energyTimer)
+  energyTimer = null
+  energyAnalyser = null
 }
 // Labels stay empty until mic permission is granted, so this runs again after
 // getUserMedia.
@@ -378,7 +473,15 @@ async function start() {
     })
     listMics()
     const capture = await addWorklet(captureCtx, CAPTURE_WORKLET, 'capture')
-    captureCtx.createMediaStreamSource(mic).connect(capture)
+    const micSource = captureCtx.createMediaStreamSource(mic)
+    micSource.connect(capture)
+    // Local voice-energy tap for the gate. It hangs off the same source but
+    // is not in the send path, so it keeps hearing while the mic is muted.
+    energyAnalyser = captureCtx.createAnalyser()
+    energyAnalyser.fftSize = ENERGY.fftSize
+    energyBuf = new Float32Array(ENERGY.fftSize)
+    micSource.connect(energyAnalyser)
+    startEnergy()
 
     const url = new URL('wss://agents.assemblyai.com/v1/ws')
     url.searchParams.set('token', token)
@@ -448,6 +551,7 @@ async function start() {
         case 'reply.started':
           lastEvent = 'reply.started'
           gate.busy = true
+          gate.armed = false
           if (gateMuted()) {
             // The agent is speaking: reopen the mic so the user can answer.
             gate.mutedUntil = 0
@@ -489,15 +593,7 @@ async function start() {
         case 'transcript.user.delta':
           partial('you', msg.text)
           logEvent('down', msg.type, msg.text)
-          if (gateNote(msg.text || '')) {
-            const at = (callStart ? (Date.now() - callStart) / 1000 : 0).toFixed(1)
-            logEvent('gate', 'semantic gate', 'mic muted ' + GATE.muteMs + 'ms')
-            fetch('/api/gate', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ session_id: sessionId, at_seconds: Number(at), kind: 'fire' }),
-            }).catch(() => {})
-          }
+          gateNote(msg.text || '')
           break
 
         // delta is the next word only, so it appends.
@@ -597,6 +693,7 @@ function stop() {
 
 function reset() {
   clearInterval(timer)
+  stopEnergy()
   clearPartials()
   gateReset()
   open.forEach((run) => paint(run, true))
