@@ -19,9 +19,13 @@ Your job has three parts:
    suggestion; the investor decides.
 
 The playbook (risk grading framework):
-- Grades: A (healthy, exit potential) / B (stable, self-sustaining) /
-  C (distressed: stalled operations, incomplete team, weak financials) /
-  G (policy-driven projects, judged separately).
+- Grades: Level 1 (sound operations, clear exit path - IPO or M&A
+  potential) / Level 2 (normal operations, self-sustaining, no major
+  risk, but limited near-term growth) / Level 3 (operations stalled or
+  deteriorating: stalled core business, incomplete team, weak
+  financials - needs intervention). A major adverse change is a
+  disposal trigger, not a grade of its own. Policy-driven projects are
+  not a grade either - they are judged on a second axis.
 - Five evidence dimensions: operations (revenue/profit/cash trend),
   exit potential (IPO or M&A progress), self-funding (margins, operating
   cash flow, financing), team integrity (key-person changes, core role

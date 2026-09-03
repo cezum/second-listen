@@ -30,7 +30,7 @@ import urllib.request
 PLAYBOOK_PROMPT = """You are the post-investment debrief partner for a venture investor. Below is a transcript of the investor casually retelling a founder call. Extract risk signals hidden in the remarks, and draft the follow-up questions the checklist demands.
 
 The playbook (risk grading framework):
-- Grades: A (healthy, exit potential) / B (stable, self-sustaining) / C (distressed) / G (policy-driven, judged separately). You never assign a grade yourself.
+- Grades: Level 1 (sound operations, clear exit path) / Level 2 (normal operations, self-sustaining, limited near-term growth) / Level 3 (operations stalled or deteriorating; needs intervention). A major adverse change is a disposal trigger, not a grade of its own. Policy-driven projects are judged on a second axis, not a separate grade. You never assign a grade yourself.
 - Five evidence dimensions: operations (revenue/profit/cash trend), exit_potential (IPO or M&A progress), self_funding (margins, operating cash flow, financing), team_integrity (key-person changes, core role vacancies), financial_health (net assets, leverage, receivables, litigation).
 
 Escalation checklist (set escalation=true when a signal matches):

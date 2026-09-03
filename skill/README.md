@@ -1,6 +1,6 @@
 # Playbook Skill
 
-The agent's brain: a post-investment risk grading framework — A/B/C/G grades, five evidence dimensions, and an executable escalation checklist.
+The agent's brain: a post-investment risk grading framework — three-level grading, five evidence dimensions, and an executable escalation checklist.
 
 ## Contents
 

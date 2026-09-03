@@ -26,7 +26,7 @@ Second Listen covers the second channel: the gap between "the conversation happe
 ## Tech
 
 - [AssemblyAI Voice Agent API](https://www.assemblyai.com/docs/voice-agents/voice-agent-api) — one WebSocket for STT + LLM + TTS, turn detection, barge-in, tool calling
-- Playbook skill: a structured risk-grading framework (A/B/C/G grades, five evidence dimensions, escalation checklist) injected as the agent's system prompt
+- Playbook skill: a structured risk-grading framework (three-level grading, five evidence dimensions, escalation checklist) injected as the agent's system prompt
 - The agent is live in `app/` today. Evidence tables, risk-ledger updates, and Action Items extraction are week-2 work; cross-debrief commitment tracking (a per-company history file) is implemented; keyterms hot-update and PII redaction remain optional — see [roadmap](docs/roadmap.md)
 
 ## Repo layout
