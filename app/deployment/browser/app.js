@@ -926,6 +926,34 @@ function currentSessionId(ledger) {
   return ids[ids.length - 1]
 }
 
+function noteFilename(company, sessionId) {
+  const slug = (company || '').trim().toLowerCase()
+    .replace(/[^a-z0-9\u4e00-\u9fff]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+  return (slug || 'session-' + sessionId.slice(-8)) + '-follow-up.md'
+}
+
+function downloadNote(sessionId, company) {
+  const url = '/api/note?session=' + encodeURIComponent(sessionId) +
+    '&company=' + encodeURIComponent(company || '')
+  fetch(url)
+    .then((res) => {
+      if (!res.ok) throw new Error('note request failed')
+      return res.text()
+    })
+    .then((markdown) => {
+      const blob = new Blob([markdown], { type: 'text/markdown' })
+      const a = document.createElement('a')
+      a.href = URL.createObjectURL(blob)
+      a.download = noteFilename(company, sessionId)
+      document.body.append(a)
+      a.click()
+      a.remove()
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000)
+    })
+    .catch(() => {})
+}
+
 // Evidence is cited by when it was said, e.g. 00:42, not a bare second count.
 function stamp (seconds) {
   if (seconds == null) return '--'
@@ -956,6 +984,20 @@ function renderLedger(ledger) {
     return
   }
   const current = currentSessionId(ledger)
+  // Follow-up note download (roadmap W2 deliverable): one ledger session
+  // rendered as a Markdown note the investor can keep per company.
+  const noteBar = document.createElement('div')
+  noteBar.className = 'note-bar'
+  const companyInput = document.createElement('input')
+  companyInput.type = 'text'
+  companyInput.placeholder = 'Company (optional) - used in the note title & filename'
+  companyInput.setAttribute('aria-label', 'Company name')
+  const noteBtn = document.createElement('button')
+  noteBtn.type = 'button'
+  noteBtn.textContent = 'Download note (.md)'
+  noteBtn.onclick = () => downloadNote(current, companyInput.value)
+  noteBar.append(companyInput, noteBtn)
+  body.append(noteBar)
   const escalations = []
   for (const id of ids) {
     const session = sessions[id]
@@ -1144,3 +1186,7 @@ function renderOffline(data, name) {
   }
   $('offline-result').hidden = false
 }
+
+// Default side pane to Ledger - the product view. Events stays available as
+// a tab for tuning and debugging.
+showTab('ledger')

@@ -142,6 +142,15 @@
 
   /* Ledger tab. */
   #ledger-body { display: flex; flex-direction: column; gap: 12px; }
+  .note-bar { display: flex; gap: 8px; align-items: center; padding: 10px;
+              background: var(--surface-alt); border: 1px solid var(--border);
+              border-radius: var(--radius-sm); }
+  .note-bar input { flex: 1; min-width: 0; height: 36px; padding: 0 10px;
+                    font-family: var(--font-body); font-size: 13px;
+                    color: var(--text-dark); background: var(--surface);
+                    border: 1px solid var(--border); border-radius: var(--radius-sm); }
+  .note-bar button { height: 36px; margin-left: 0; padding: 0 14px;
+                     font-size: 12px; letter-spacing: .8px; }
   .ledger-session { border-top: 1px solid var(--border); padding-top: 10px; }
   .ledger-session:first-child { border-top: none; padding-top: 0; }
   .ledger-session-head { font-family: var(--font-mono); font-size: 11px;
@@ -254,6 +263,6 @@
   </div>
 </main>
 <script>window.AGENT = {{AGENT_JSON}}</script>
-    <script src="/app.js?v=5"></script>
+    <script src="/app.js?v=6"></script>
 </body>
 </html>

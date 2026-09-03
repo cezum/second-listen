@@ -21,18 +21,20 @@ Second Listen covers the second channel: the gap between "the conversation happe
 
 1. **Debrief** — after a call, press and talk for ~2 minutes.
 2. **Interrogate** — the agent follows the playbook's escalation checklist ("Who's covering finance since the CFO left? Was there written approval for moving the grant money?"), one question at a time.
-3. **Record** — produces an evidence table with timestamps, a risk-ledger update, escalation flags per policy, and a draft follow-up note. The AI surfaces evidence and suggestions; **humans grade**.
+3. **Record** — produces an evidence table with timestamps, a risk-ledger update, escalation flags per policy, and a downloadable Markdown follow-up note per company. The AI surfaces evidence and suggestions; **humans grade**.
+
+Prefer not to talk? **Analyze recording** uploads a pre-recorded debrief (Chinese works too): Universal-2 transcribes it and the same playbook returns a signal list plus follow-up questions — no live dialogue needed.
 
 ## Tech
 
 - [AssemblyAI Voice Agent API](https://www.assemblyai.com/docs/voice-agents/voice-agent-api) — one WebSocket for STT + LLM + TTS, turn detection, barge-in, tool calling
 - Playbook skill: a structured risk-grading framework (three-level grading, five evidence dimensions, escalation checklist) injected as the agent's system prompt
-- The agent is live in `app/` today. Evidence tables, risk-ledger updates, and Action Items extraction are week-2 work; cross-debrief commitment tracking (a per-company history file) is implemented; keyterms hot-update and PII redaction remain optional — see [roadmap](docs/roadmap.md)
+- The agent is live in `app/` today: evidence tables, risk-ledger updates, Action Items, file-upload analysis, and cross-debrief commitment tracking (a per-company history file) are implemented and voice-tested across eight archived rounds. Keyterms hot-update and PII redaction remain optional — see [roadmap](docs/roadmap.md)
 
 ## Repo layout
 
 ```
-docs/system-prompt.md   the agent's playbook prompt (v0.2, evolving)
+docs/system-prompt.md   the agent's playbook prompt (v0.4, evolving)
 docs/demo-script.md     the 45-second debrief monologue with buried signals
 docs/demo-script-zh.md  the same monologue in Chinese, for the comparison round
 docs/roadmap.md         build milestones for the hackathon month
@@ -72,7 +74,12 @@ It repacks the ledger's `add_action_item` calls into `commitments` and its `log_
 
 ## Status
 
-🚧 Week 1 of the hackathon — skeleton and questioning-quality tuning.
+Core product complete: playbook-driven live debrief (evidence, ledger,
+escalation, action items), file-upload mode for recorded/Chinese debriefs,
+downloadable follow-up notes, and cross-debrief commitment checks all
+implemented and verified (Round 2's check is verified at the publish/greeting
+layer; a full voice pass is pending). Remaining: demo video + submission
+materials (out of scope for the repo's core work).
 
 ## License
 

@@ -14,6 +14,7 @@ import threading
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.parse import parse_qs
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parents[1]))
@@ -26,6 +27,7 @@ from archive import DEFAULT_TRIALS_DIR, archive_async  # noqa: E402
 import transcribe  # noqa: E402
 import analyze  # noqa: E402
 from history import apply_history, latest_history  # noqa: E402
+from note import note_for_session  # noqa: E402
 
 # The page flushes every tool call of a turn at once, so several POSTs land in
 # parallel. Reading, appending and writing without a lock loses whichever
@@ -92,6 +94,20 @@ class Handler(BaseHTTPRequestHandler):
             history = latest_history() or {}
             self._send(200, json.dumps(history, ensure_ascii=False).encode(),
                        "application/json")
+            return
+        if path == "/api/note":
+            query = parse_qs(self.path.split("?", 1)[1]) if "?" in self.path else {}
+            session_id = (query.get("session") or [""])[0] or None
+            company = (query.get("company") or [""])[0]
+            try:
+                sid, markdown = note_for_session(session_id, company)
+            except SystemExit as err:
+                self._send(404,
+                           json.dumps({"error": str(err)}).encode(),
+                           "application/json")
+                return
+            self._send(200, markdown.encode("utf-8"),
+                       "text/markdown; charset=utf-8")
             return
         if path == "/token":
             try:

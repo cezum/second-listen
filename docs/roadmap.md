@@ -34,3 +34,21 @@ from `app/data/history/<company>.json` at publish time — no vector store, no D
 - `commitments` → injected into the agent's greeting so the next debrief opens by checking each one (owner + deadline included).
 - `signals` → injected into the system prompt so the agent does not re-ask what was already recorded.
 - `HISTORY_COMPANY=<company>` selects the file; otherwise the most recently modified one is used. With no file the agent keeps its default greeting (inert until a file appears).
+
+## Progress log
+
+- 2026-09-01/02 — W1 done (skeleton, prompt v0.1→v0.2 text-first, voice
+  re-test pass); W2 delivered ahead of plan: evidence table, ledger,
+  escalation banner, Action Items, auto-archive, file-upload mode.
+- 2026-09-03 — W3 mechanisms live: cross-debrief history file + commitment
+  check (injection verified end-to-end on 衡远医疗, 2 commitments);
+  conversation quality rounds W2–W8 archived; prompt v0.3→v0.4 (short quotes,
+  action-item discipline, single reply after batch logs, plain English);
+  min_silence tuned 1000→650→800; front-end semantic gate retired as the
+  default turn-taking approach (inline mode is the browser baseline).
+- 2026-09-04 — Follow-up note delivered (GET /api/note → downloadable
+  Markdown per company); Ledger is the default side pane; file-upload mode
+  re-verified end-to-end on a Chinese recording and the no-LLM fallback now
+  covers the demo script's signals in Chinese. Remaining: voice pass of v0.4
+  and of the commitment check (Round 2), demo rehearsal/video, slides,
+  public-repo finalization (frozen until the project is finished).

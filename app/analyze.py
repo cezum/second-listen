@@ -75,6 +75,25 @@ _KEYWORD_RULES = [
      "revenue trend", False),
     (r"(cash flow|现金流|资金链).{0,40}(negative|不乐观|没.{0,3}乐观|恶化|吃紧|紧张|为负|断裂)", "self_funding",
      "cash flow", False),
+    # Chinese-script patterns (the demo recordings). STT drops punctuation and
+    # often mangles words (集采->极采, 三千万->30万), so patterns are loose
+    # and anchored on the words that survive transcription.
+    (r"(集采|极采|集彩|集中采购).{0,30}(砍|降价|降了|四成|腰斩)", "operations",
+     "major adverse policy / market change", True),
+    (r"(应收账款|应收|回款).{0,40}(翻了一倍|翻倍|翻一番|两个亿|两亿|快两个亿|多了)", "financial_health",
+     "rising accounts receivable", False),
+    (r"(净利润|净利|利润).{0,25}(下滑|下降|一般|差一截|砍价|难看)", "operations",
+     "declining net profit margins", False),
+    (r"(上市|IPO|申报|报材料|创业板).{0,50}(推到|延期|推迟|延迟|明年|下半年|没正式进场)", "exit_potential",
+     "IPO timeline delayed / listing deadline risk", True),
+    (r"(销售副总|销售总监|副总|老周|CFO|高管|总经理).{0,40}(走了|离职|出走|离开|去竞争对手|跳槽|辞职)", "team_integrity",
+     "key personnel loss / core role vacancy", True),
+    (r"(借了|拆借|账上借|借给).{0,50}(周转|亲戚|小舅子|还|贸易公司)", "financial_health",
+     "funds used outside the agreed purpose", True),
+    (r"(仲裁|诉讼|起诉|纠纷|闹掰).{0,40}(涉案|两千三百|2300|仲裁|起诉|闹掰)", "financial_health",
+     "litigation", True),
+    (r"(注册了.{0,15}公司|注册.{0,20}公司|另起炉灶|在外面).{0,60}(重叠|冲突|经营范围|机器人|同业)", "team_integrity",
+     "founder registered overlapping business", True),
 ]
 
 
@@ -85,6 +104,11 @@ _SIGNAL_LABELS = {
     "key personnel loss / core role vacancy": "关键人员流失 / 核心岗位空缺",
     "funds used outside the agreed purpose": "资金未按约定用途使用",
     "litigation": "诉讼",
+    "major adverse policy / market change": "重大不利政策 / 市场变化",
+    "rising accounts receivable": "应收账款上升",
+    "declining net profit margins": "净利润下滑 / 毛利率下降",
+    "IPO timeline delayed / listing deadline risk": "IPO 延期 / 申报时限风险",
+    "founder registered overlapping business": "创始人另设同业公司",
     "violation / accident": "违规 / 事故",
     "equity or control change": "股权或控制权变更",
     "performance target / buyback": "业绩目标未达标 / 回购",
@@ -102,6 +126,16 @@ def _label(signal: str, language: str) -> str:
 def _question(signal: str, language: str) -> str:
     """The single follow-up question the checklist needs, in the speaker's language."""
     if language == "zh":
+        if "policy" in signal or "market change" in signal:
+            return "集采影响覆盖哪些产品，毛利影响有多大，应对计划是什么？"
+        if "receivable" in signal:
+            return "应收账款的账期和回款计划如何？"
+        if "profit" in signal:
+            return "净利下滑的主要原因是什么，是否已反映在预测里？"
+        if "IPO" in signal or "listing" in signal:
+            return "协议里是否约定申报时限，延期是否会触发回购？"
+        if "registered" in signal or "overlapping" in signal:
+            return "新公司的股权和业务范围是什么，是否存在利益输送？"
         if "personnel" in signal or "vacancy" in signal:
             return "相关岗位离职后由谁接手、从什么时候开始？"
         if "funds" in signal:
@@ -115,6 +149,16 @@ def _question(signal: str, language: str) -> str:
         if "performance" in signal or "buyback" in signal:
             return "业绩未达标的书面记录和触发条款是什么？"
         return "是什么驱动了这一变化，是否已在预测中体现？"
+    if "policy" in signal or "market change" in signal:
+        return "Which products are affected by the procurement price cuts, and what is the plan?"
+    if "receivable" in signal:
+        return "How long is the receivables cycle now, and what is the collection plan?"
+    if "profit" in signal:
+        return "What is driving the margin decline, and is it in the forecast?"
+    if "IPO" in signal or "listing" in signal:
+        return "Does the agreement set a filing deadline, and could the delay trigger a buyback?"
+    if "registered" in signal or "overlapping" in signal:
+        return "What does the new company do, and could it create a conflict of interest?"
     if "personnel" in signal or "vacancy" in signal:
         return "Who is covering the role since they left, and since when?"
     if "funds" in signal:
