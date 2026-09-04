@@ -43,6 +43,7 @@ The session message contains only `{ agent_id }`. Prompt, voice, tools and turn 
 | `AGENT_ID_<NAME>` | The id `python publish.py` saved for that file. Connected to as it is. |
 | `AGENT_ID` | Overrides the per-file keys, for serving one specific agent. |
 | `PORT` | Defaults to 3000, moves to the next free port if taken. |
+| `HOST` | Defaults to `127.0.0.1`. Set `0.0.0.0` only when a container platform routes to the port — the ledger and note endpoints have no auth. |
 
 ## Editing the page
 
@@ -50,7 +51,7 @@ The server is [server.py](server.py), the page is [index.html](index.html) and t
 
 ## Hosting
 
-`render.yaml` is configured for one-click deploys. Render prompts for `ASSEMBLYAI_API_KEY` during Blueprint creation, since that is the only variable marked `sync: false`, and sets `PORT` itself. `AGENT` and `AGENT_ID` arrive with defaults and are editable under Environment on the service.
+`render.yaml` is configured for one-click deploys. Render prompts for `ASSEMBLYAI_API_KEY` during Blueprint creation, since that is the only variable marked `sync: false`, and sets `PORT` itself. `HOST` is preset to `0.0.0.0` in the blueprint — containers must listen on all interfaces — while local runs stay on loopback. `AGENT` and `AGENT_ID` arrive with defaults and are editable under Environment on the service.
 
 With no id set the service publishes `AGENT` on boot and updates the agent of that name on later restarts, so restarts do not pile up duplicate agents. Setting `AGENT_ID` to the id from your `.env` is still better: the deployment then serves the same agent you tested locally.
 

@@ -11,6 +11,10 @@ services:
       # be changed afterwards under Environment on the service.
       - key: ASSEMBLYAI_API_KEY
         sync: false
+      # Containers must listen on all interfaces to be reachable; the server
+      # binds loopback unless HOST says otherwise (local runs stay private).
+      - key: HOST
+        value: 0.0.0.0
       # Which agents/<name>.jsonc the service publishes on boot.
       - key: AGENT
         value: second-listen
