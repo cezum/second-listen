@@ -26,11 +26,14 @@ import urllib.error
 import urllib.request
 
 # The playbook, in a form an LLM can read and answer against. Kept in sync with
-# the system prompt in agents/second-listen.jsonc.
+# the system prompt in agents/second-listen.jsonc (which keeps a matching
+# back-reference in its header) — changes here must be mirrored there. The
+# language rule is the one deliberate difference: the live agent always speaks
+# English; this text mode answers in the transcript's language.
 PLAYBOOK_PROMPT = """You are the post-investment debrief partner for a venture investor. Below is a transcript of the investor casually retelling a founder call. Extract risk signals hidden in the remarks, and draft the follow-up questions the checklist demands.
 
 The playbook (risk grading framework):
-- Grades: Level 1 (sound operations, clear exit path) / Level 2 (normal operations, self-sustaining, limited near-term growth) / Level 3 (operations stalled or deteriorating; needs intervention). A major adverse change is a disposal trigger, not a grade of its own. Policy-driven projects are judged on a second axis, not a separate grade. You never assign a grade yourself.
+- Grades: Level 1 (sound operations, clear exit path) / Level 2 (normal operations, self-sustaining, limited near-term growth) / Level 3 (operations stalled or deteriorating: stalled core business, incomplete team, weak financials; needs intervention). A major adverse change is a disposal trigger, not a grade of its own. Policy-driven projects are judged on a second axis, not a separate grade. You never assign a grade yourself.
 - Five evidence dimensions: operations (revenue/profit/cash trend), exit_potential (IPO or M&A progress), self_funding (margins, operating cash flow, financing), team_integrity (key-person changes, core role vacancies), financial_health (net assets, leverage, receivables, litigation).
 
 Escalation checklist (set escalation=true when a signal matches):
@@ -40,8 +43,11 @@ Escalation checklist (set escalation=true when a signal matches):
 - breach by the investee harming investors
 - equity or control changes
 - missed performance targets triggering buyback or compensation
+- when an IPO or listing timeline slips, flag it: the agreement may set a listing deadline and the delay could trigger buyback
 - disbursement beyond 10% of the approved amount, or project delayed 2+ years
 - major adverse policy or market changes
+
+Red lines (also escalation=true): any mention of guaranteed returns, principal protection, buyback promises, "inside information", or funds being handled outside formal channels — quote it exactly and flag it even if the investor framed it as routine.
 
 Rules:
 - Quote the investor's own words for each signal (a short clause).
@@ -59,6 +65,12 @@ If there are no signals, return {"signals":[],"questions":[]}.
 # (dimension, signal label, escalation flag). Order matters: first match wins
 # per pattern so a clause is not double-counted.
 _KEYWORD_RULES = [
+    # Compliance red lines first: guaranteed returns, principal protection,
+    # buyback promises, inside information. These escalate no matter how
+    # casually the investor mentions them.
+    (r"(guaranteed? (returns?|yield)|principal protection|assured return|"
+     r"保证收益|保本|兜底|稳赚|刚性兑付|回购承诺|内部消息|内幕消息|内幕)",
+     "financial_health", "compliance red line: guaranteed return / insider info", True),
     (r"(CFO|chief financial|finance (director|head)|财务总监|财务负责人).{0,40}(left|departed|quit|resigned|离开|离职|走了|无人|空缺|vacant|unmanaged)",
      "team_integrity", "key personnel loss / core role vacancy", True),
     (r"(grant|subsidy|研发补助|补助|专项资金|专款).{0,40}(payroll|工资|工资条|diverted|moved|挪|挪用|用于.*发工资)",
@@ -101,6 +113,7 @@ _KEYWORD_RULES = [
 # keyword matcher works for both English and Chinese transcripts; the result
 # should read in the same language the investor spoke.
 _SIGNAL_LABELS = {
+    "compliance red line: guaranteed return / insider info": "合规红线：保本保收益 / 内幕信息",
     "key personnel loss / core role vacancy": "关键人员流失 / 核心岗位空缺",
     "funds used outside the agreed purpose": "资金未按约定用途使用",
     "litigation": "诉讼",
@@ -126,6 +139,8 @@ def _label(signal: str, language: str) -> str:
 def _question(signal: str, language: str) -> str:
     """The single follow-up question the checklist needs, in the speaker's language."""
     if language == "zh":
+        if "compliance red line" in signal:
+            return "这一承诺或消息有书面依据吗？是否已写进协议或补充条款？"
         if "policy" in signal or "market change" in signal:
             return "集采影响覆盖哪些产品，毛利影响有多大，应对计划是什么？"
         if "receivable" in signal:
@@ -149,6 +164,8 @@ def _question(signal: str, language: str) -> str:
         if "performance" in signal or "buyback" in signal:
             return "业绩未达标的书面记录和触发条款是什么？"
         return "是什么驱动了这一变化，是否已在预测中体现？"
+    if "compliance red line" in signal:
+        return "Is there a written basis for this promise -- is it in the agreement or a side letter?"
     if "policy" in signal or "market change" in signal:
         return "Which products are affected by the procurement price cuts, and what is the plan?"
     if "receivable" in signal:
@@ -223,13 +240,15 @@ def _analyze_with_llm(transcript: str, language: str = None) -> dict:
         headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
     )
     try:
-        with urllib.request.urlopen(req) as res:
+        with urllib.request.urlopen(req, timeout=90) as res:
             raw = json.loads(res.read().decode())
-    except (urllib.error.HTTPError, ValueError) as err:
-        # Fall back to keywords rather than failing the whole upload.
+        content = raw["choices"][0]["message"]["content"]
+    except (urllib.error.HTTPError, urllib.error.URLError,
+            KeyError, IndexError, TypeError, ValueError):
+        # A bad status, a dead connection, a socket timeout, or an unexpected
+        # response shape all fall back to keywords rather than failing the
+        # whole upload.
         return _analyze_with_keywords(transcript, language)
-
-    content = raw["choices"][0]["message"]["content"]
     # Strip a code fence if the model wrapped the JSON in one.
     content = re.sub(r"^```(?:json)?\s*|\s*```$", "", content.strip())
     try:

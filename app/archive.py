@@ -16,7 +16,7 @@ import urllib.request
 from pathlib import Path
 from typing import Optional
 
-from lib import aai  # noqa: E402
+from lib import aai, atomic_write_text, read_json  # noqa: E402
 
 DEFAULT_TRIALS_DIR = Path(__file__).resolve().parent / "data" / "trials"
 
@@ -42,9 +42,8 @@ def _write_transcript(session_dir: Path, timeline: dict) -> None:
 
 def _update_index(trials_dir: Path, session: dict) -> None:
     index_path = trials_dir / "index.json"
-    try:
-        index = json.loads(index_path.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
+    index = read_json(index_path, [])
+    if not isinstance(index, list):
         index = []
     entry = {
         "id": session.get("id"),
@@ -53,8 +52,8 @@ def _update_index(trials_dir: Path, session: dict) -> None:
         "duration_seconds": session.get("duration_seconds"),
     }
     index = [e for e in index if e.get("id") != session.get("id")] + [entry]
-    index_path.write_text(json.dumps(index, ensure_ascii=False, indent=2),
-                          encoding="utf-8")
+    atomic_write_text(index_path,
+                      json.dumps(index, ensure_ascii=False, indent=2))
 
 
 def archive_session(session_id: str, trials_dir: Optional[Path] = None) -> dict:

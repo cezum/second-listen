@@ -73,6 +73,28 @@ def required(name: str, hint: str = "") -> str:
     return value
 
 
+# --- files ------------------------------------------------------------------
+
+
+def atomic_write_text(path: Path, text: str) -> None:
+    """Write via a temp file + os.replace, so a crash mid-write leaves the old
+    content intact instead of a truncated JSON that kills the next reader
+    (latest_history() feeds server startup, so a half-written history file
+    used to mean the server would not boot)."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(text, encoding="utf-8")
+    os.replace(tmp, path)
+
+
+def read_json(path: Path, default: Any = None) -> Any:
+    """Read a JSON file, returning default when it is missing or corrupt."""
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return default
+
+
 # --- agent files ------------------------------------------------------------
 
 

@@ -19,7 +19,10 @@ API_BASE = "https://api.assemblyai.com/v2"
 
 
 class TranscribeError(Exception):
-    pass
+    # transient marks failures worth retrying: dead connection, timeout, 5xx.
+    def __init__(self, message: str, transient: bool = False):
+        super().__init__(message)
+        self.transient = transient
 
 
 # The upload endpoint takes the raw audio bytes as the request body (not
@@ -47,17 +50,39 @@ def _auth() -> dict:
     return {"Authorization": os.environ.get("ASSEMBLYAI_API_KEY", "")}
 
 
+_RETRY_CODES = (408, 500, 502, 503, 504)
+
+
 def _request(url: str, method: str = "GET", headers: dict = None,
-             data: bytes = None) -> bytes:
+             data: bytes = None, timeout: float = 60.0) -> bytes:
     req = urllib.request.Request(url, data=data, method=method,
                                  headers=headers or {})
     try:
-        with urllib.request.urlopen(req) as res:
+        with urllib.request.urlopen(req, timeout=timeout) as res:
             return res.read()
     except urllib.error.HTTPError as err:
         raise TranscribeError(
-            f"{method} {url} failed ({err.code}): {err.read().decode()}"
+            f"{method} {url} failed ({err.code}): {err.read().decode()}",
+            transient=err.code in _RETRY_CODES,
         ) from None
+    except (urllib.error.URLError, TimeoutError, OSError) as err:
+        # URLError covers refused/unreachable connections and DNS; TimeoutError
+        # is a socket that never answered. Both may be gone on the next try.
+        raise TranscribeError(
+            f"{method} {url} failed: {err}", transient=True) from None
+
+
+def _request_retry(url: str, attempts: int = 3, **kwargs) -> bytes:
+    """Retry transient failures with exponential backoff (1s, 2s)."""
+    delay = 1.0
+    for attempt in range(attempts):
+        try:
+            return _request(url, **kwargs)
+        except TranscribeError as err:
+            if attempt + 1 == attempts or not err.transient:
+                raise
+            time.sleep(delay)
+            delay *= 2
 
 
 def transcribe(audio_bytes: bytes, filename: str, timeout: float = 300.0) -> dict:
@@ -66,8 +91,10 @@ def transcribe(audio_bytes: bytes, filename: str, timeout: float = 300.0) -> dic
     Returns {"text", "language", "duration", "confidence"}.
     """
     # 1. Upload the raw audio as the request body to get a short-lived URL.
-    up = _request(f"{API_BASE}/upload", "POST",
-                  {**_auth(), "Content-Type": _mime_for(filename)}, audio_bytes)
+    #    Upload gets the longest socket timeout — it moves the whole file.
+    up = _request_retry(f"{API_BASE}/upload", "POST",
+                        {**_auth(), "Content-Type": _mime_for(filename)},
+                        audio_bytes, timeout=300.0)
     upload_url = json.loads(up).get("upload_url")
     if not upload_url:
         raise TranscribeError(f"upload failed: {up.decode()}")
@@ -81,8 +108,9 @@ def transcribe(audio_bytes: bytes, filename: str, timeout: float = 300.0) -> dic
         "speech_models": ["universal-2"],
         "language_detection": True,
     }).encode()
-    sub = _request(f"{API_BASE}/transcript", "POST",
-                   {**_auth(), "Content-Type": "application/json"}, payload)
+    sub = _request_retry(f"{API_BASE}/transcript", "POST",
+                         {**_auth(), "Content-Type": "application/json"},
+                         payload)
     transcript_id = json.loads(sub).get("id")
     if not transcript_id:
         raise TranscribeError(f"transcript submit failed: {sub.decode()}")
@@ -92,7 +120,7 @@ def transcribe(audio_bytes: bytes, filename: str, timeout: float = 300.0) -> dic
     while time.time() < deadline:
         time.sleep(2)
         res = json.loads(_request(f"{API_BASE}/transcript/{transcript_id}",
-                                  "GET", _auth()))
+                                  "GET", _auth(), timeout=30.0))
         status = res.get("status")
         if status == "completed":
             return {

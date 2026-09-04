@@ -1,7 +1,13 @@
-// Second Listen - post-investment debrief partner (v0.2 prompt).
+// Second Listen - post-investment debrief partner (v0.4 prompt).
 //
 // Listens for risk signals hidden in casual debrief remarks, asks the
 // playbook questions, and reads back evidence + actions without grading.
+//
+// The playbook core (grades, five dimensions, escalation checklist) is kept
+// in sync with PLAYBOOK_PROMPT in analyze.py (file-upload mode), which keeps
+// a matching back-reference. Changes to that core must be mirrored there.
+// One deliberate difference: this live agent always SPEAKS English; the
+// text-mode analyzer answers in the transcript's language.
 //
 // Publish with:  AGENT=second-listen python publish.py
 {

@@ -651,7 +651,11 @@ async function start() {
           break
 
         case 'tool.call': {
-          // Client-side tool: persist locally, then answer at the turn boundary.
+          // Client-side tool: persist locally, then answer at the turn
+          // boundary. The result waits for the POST to settle -- the system
+          // prompt forbids the agent from claiming a record exists unless it
+          // really does, so a failed write must answer ok:false, not a
+          // canned {recorded:true}.
           const args = msg.arguments ?? {}
           const at = (callStart ? (Date.now() - callStart) / 1000 : 0).toFixed(1)
           logEvent('down', msg.type, `${msg.name} ${JSON.stringify(args)}`)
@@ -666,14 +670,22 @@ async function start() {
               arguments: args,
             }),
           })
-            .then((res) => res.json())
-            .then(() => refreshLedger())
-            .catch(() => {})
-          pendingTools.push({
-            call_id: msg.call_id,
-            result: JSON.stringify({ ok: true, recorded: true }),
-          })
-          flushTools()
+            .then((res) => {
+              if (!res.ok) throw new Error('ledger write failed')
+              return res.json()
+            })
+            .then(() => {
+              refreshLedger()
+              return { ok: true, recorded: true }
+            })
+            .catch(() => {
+              logEvent('down', 'ledger.error', msg.name + ' was NOT saved')
+              return { ok: false, recorded: false }
+            })
+            .then((result) => {
+              pendingTools.push({ call_id: msg.call_id, result: JSON.stringify(result) })
+              flushTools()
+            })
           break
         }
 

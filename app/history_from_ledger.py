@@ -30,6 +30,8 @@ import sys
 from pathlib import Path
 from typing import Any, Optional
 
+from lib import atomic_write_text
+
 ROOT = Path(__file__).resolve().parent
 LEDGER = ROOT / "data" / "ledger.json"
 HISTORY_DIR = ROOT / "data" / "history"
@@ -134,7 +136,7 @@ def main() -> int:
         return 1
 
     HISTORY_DIR.mkdir(parents=True, exist_ok=True)
-    path.write_text(body + "\n", encoding="utf-8")
+    atomic_write_text(path, body + "\n")
     print(f"\nwrote    {path}")
     print(f"next     COMPANY={slugify(company)} python publish.py")
     print("         then start a new call: the agent opens by checking "

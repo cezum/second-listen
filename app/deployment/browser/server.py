@@ -7,6 +7,7 @@ The API key stays in this process; the page only gets 60-second tokens.
 """
 
 import copy
+import hashlib
 import json
 import os
 import sys
@@ -21,8 +22,8 @@ sys.path.insert(0, str(HERE.parents[1]))
 LEDGER = HERE.parents[1] / "data" / "ledger.json"
 GATE_LOG = HERE.parents[1] / "data" / "gate_log.json"
 
-from lib import (ApiError, aai, ensure_agent, load_env, read_agent,  # noqa: E402
-                 required)
+from lib import (ApiError, aai, atomic_write_text, ensure_agent, load_env,
+                 read_agent, read_json, required)
 from archive import DEFAULT_TRIALS_DIR, archive_async  # noqa: E402
 import transcribe  # noqa: E402
 import analyze  # noqa: E402
@@ -73,6 +74,18 @@ def public_agent(agent: dict) -> dict:
 AGENT = None
 PAGE = ""
 TRIALS_DIR = Path(os.environ.get("TRIALS_DIR") or DEFAULT_TRIALS_DIR)
+# Universal-2 bills per upload ($0.45/hr), so repeat analyses of the same
+# recording would bill twice. Cache transcripts by audio hash -- the analysis
+# itself is re-run every request, only transcription results are cached.
+TRANSCRIPT_CACHE = Path(os.environ.get("TRANSCRIPT_CACHE_DIR")
+                        or HERE.parents[1] / "data" / "transcript_cache")
+
+
+def debug_log(*args) -> None:
+    """Runtime request errors go nowhere unless DEBUG is set; the default
+    server stays quiet (startup and publish messages still print)."""
+    if os.environ.get("DEBUG"):
+        print(*args, file=sys.stderr)
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -114,7 +127,7 @@ class Handler(BaseHTTPRequestHandler):
                 token = aai("/token?product=voice_agent&expires_in_seconds=60")
                 self._send(200, json.dumps(token).encode(), "application/json")
             except ApiError as err:
-                print(err)
+                debug_log(err)
                 self._send(502, b'{"error":"token request failed"}', "application/json")
             return
         if path == "/agent":
@@ -126,11 +139,16 @@ class Handler(BaseHTTPRequestHandler):
                 agent = aai(f"/agents/{AGENT['id']}")
                 self._send(200, json.dumps(public_agent(agent)).encode(), "application/json")
             except ApiError as err:
-                print(err)
+                debug_log(err)
                 self._send(502, b'{"error":"could not load the agent"}', "application/json")
             return
         if path == "/app.js":
             self._send(200, (HERE / "app.js").read_bytes(), "text/javascript")
+            return
+        # Unknown /api/* paths are bugs, not navigation: answer 404 instead of
+        # serving the page, which made a mistyped fetch look like success.
+        if path.startswith("/api/"):
+            self._send(404, b'{"error":"not found"}', "application/json")
             return
         self._send(200, PAGE.encode(), "text/html")
 
@@ -139,19 +157,31 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/upload":
             try:
                 length = int(self.headers.get("Content-Length", 0))
+                # The cap bounds the 2x memory spike of buffering the whole
+                # body and then POSTing it on to /v2/upload. 50MB is plenty
+                # for hours of debrief audio; chunked upload would be the
+                # fix if this ever needs to grow.
                 if length <= 0 or length > 50 * 1024 * 1024:
                     self._send(400, b'{"error":"empty or oversized file"}',
                                "application/json")
                     return
                 audio = self.rfile.read(length)
                 filename = self.headers.get("X-Filename") or "recording.ogg"
-                result = transcribe.transcribe(audio, filename)
+                cache_file = TRANSCRIPT_CACHE / (
+                    hashlib.sha256(audio).hexdigest() + ".json")
+                cached = read_json(cache_file)
+                if cached is not None:
+                    result = cached
+                else:
+                    result = transcribe.transcribe(audio, filename)
+                    atomic_write_text(
+                        cache_file, json.dumps(result, ensure_ascii=False))
                 result["analysis"] = analyze.analyze_transcript(
                     result.get("text", ""), result.get("language"))
                 self._send(200, json.dumps(result, ensure_ascii=False).encode("utf-8"),
                            "application/json")
             except transcribe.TranscribeError as err:
-                print(err)
+                debug_log(err)
                 self._send(502, json.dumps({"error": str(err)}).encode(),
                            "application/json")
             except (ValueError, OSError) as err:
@@ -176,17 +206,15 @@ class Handler(BaseHTTPRequestHandler):
                 length = int(self.headers.get("Content-Length", 0))
                 body = json.loads(self.rfile.read(length) or b"{}")
                 with LEDGER_LOCK:
-                    log = []
-                    if GATE_LOG.exists():
-                        log = json.loads(GATE_LOG.read_text(encoding="utf-8"))
+                    log = read_json(GATE_LOG, []) or []
                     log.append({
                         "at": datetime.now(timezone.utc).isoformat(),
                         "session_id": body.get("session_id"),
                         "at_seconds": body.get("at_seconds"),
                         "kind": body.get("kind", "fire"),
                     })
-                    GATE_LOG.write_text(
-                        json.dumps(log, ensure_ascii=False, indent=2), encoding="utf-8")
+                    atomic_write_text(
+                        GATE_LOG, json.dumps(log, ensure_ascii=False, indent=2))
                 self._send(200, b'{"ok":true}', "application/json")
             except (ValueError, OSError) as err:
                 self._send(400, json.dumps({"error": str(err)}).encode(),
@@ -236,7 +264,7 @@ class Handler(BaseHTTPRequestHandler):
 def read_ledger() -> dict:
     if not LEDGER.exists():
         return {"sessions": {}}
-    return json.loads(LEDGER.read_text(encoding="utf-8"))
+    return read_json(LEDGER, {"sessions": {}})
 
 
 def read_ledger_bytes() -> bytes:
@@ -246,9 +274,7 @@ def read_ledger_bytes() -> bytes:
 
 
 def write_ledger(ledger: dict) -> None:
-    LEDGER.parent.mkdir(parents=True, exist_ok=True)
-    LEDGER.write_text(json.dumps(ledger, ensure_ascii=False, indent=2),
-                      encoding="utf-8")
+    atomic_write_text(LEDGER, json.dumps(ledger, ensure_ascii=False, indent=2))
 
 
 def main() -> None:
@@ -275,9 +301,13 @@ def main() -> None:
     # PORT when set, otherwise 3000 and up until one is free.
     fixed = os.environ.get("PORT")
     port = int(fixed) if fixed else 3000
+    # Loopback unless a deployment explicitly asks to be reachable. The
+    # ledger, note and history endpoints carry real debrief content and have
+    # no auth, so binding every interface is a decision, not a default.
+    host = os.environ.get("HOST", "127.0.0.1")
     while True:
         try:
-            server = ThreadingHTTPServer(("", port), Handler)
+            server = ThreadingHTTPServer((host, port), Handler)
             break
         except OSError:
             if fixed or port >= 3010:

@@ -28,6 +28,8 @@ import os
 from pathlib import Path
 from typing import Any, Optional
 
+from lib import read_json
+
 ROOT = Path(__file__).resolve().parent
 HISTORY_DIR = ROOT / "data" / "history"
 
@@ -37,10 +39,9 @@ def list_companies() -> list[str]:
 
 
 def load_history(company: str) -> Optional[dict]:
-    path = HISTORY_DIR / f"{company}.json"
-    if not path.exists():
-        return None
-    return json.loads(path.read_text(encoding="utf-8"))
+    # read_json returns None for a missing OR corrupt file -- a half-written
+    # history file must not kill the publish/boot path that reads it.
+    return read_json(HISTORY_DIR / f"{company}.json")
 
 
 def latest_history() -> Optional[dict]:
@@ -48,7 +49,7 @@ def latest_history() -> Optional[dict]:
     if not files:
         return None
     latest = max(files, key=lambda p: p.stat().st_mtime)
-    return json.loads(latest.read_text(encoding="utf-8"))
+    return read_json(latest)
 
 
 def _pick_history() -> Optional[dict]:
