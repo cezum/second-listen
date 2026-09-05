@@ -165,6 +165,7 @@ const blobUrl = (code) =>
   URL.createObjectURL(new Blob([code], { type: 'application/javascript' }))
 
 let ws, captureCtx, playbackCtx, playback, mic, callStart, timer
+let callGeneration = 0, connectionDeadline
 let sessionId = null
 // Client-side tools: hold results until the turn is idle (reply.done).
 let lastEvent = null
@@ -277,7 +278,6 @@ function gateReset() {
   gate.busy = false
   gate.armed = false
 }
-
 // --- gate v3: local voice energy ---
 // The transcript cannot show a pause (it only carries words), and muting on
 // text alone is what cut sentences in half: the user's next words fell into
@@ -390,13 +390,13 @@ async function listMics() {
   })
   if (chosen && inputs.some((device) => device.deviceId === chosen)) select.value = chosen
 }
-listMics()
+listMics().catch(() => {})
 navigator.mediaDevices?.addEventListener?.('devicechange', listMics)
 
 $('btn').onclick = () => (ws?.readyState <= 1 ? stop() : start())
 $('log-toggle').onclick = () => {
   const hidden = document.body.classList.toggle('no-side')
-  $('log-toggle').textContent = hidden ? 'Show' : 'Hide'
+  $('log-toggle').textContent = hidden ? 'Show panel' : 'Hide panel'
 }
 
 // --- side pane tabs ---
@@ -405,6 +405,8 @@ let agentLoaded = false
 function showTab(name) {
   for (const tab of ['events', 'agent', 'ledger', 'commitments']) {
     $('tab-' + tab).classList.toggle('on', tab === name)
+    $('tab-' + tab).setAttribute('aria-selected', String(tab === name))
+    $('tab-' + tab).tabIndex = tab === name ? 0 : -1
     $(tab + '-body').hidden = tab !== name
   }
   if (name === 'agent' && !agentLoaded) {
@@ -423,7 +425,7 @@ function showTab(name) {
       })
   }
   if (name === 'ledger') {
-    $('ledger-reset').hidden = false
+    $('ledger-reset').hidden = true
     refreshLedger()
   } else {
     $('ledger-reset').hidden = true
@@ -434,12 +436,6 @@ $('tab-events').onclick = () => showTab('events')
 $('tab-agent').onclick = () => showTab('agent')
 $('tab-ledger').onclick = () => showTab('ledger')
 $('tab-commitments').onclick = () => showTab('commitments')
-$('ledger-reset').onclick = () => {
-  fetch('/api/ledger', { method: 'DELETE' })
-    .then(() => { hideBanner(); refreshLedger() })
-    .catch(() => {})
-}
-
 async function addWorklet(ctx, code, name) {
   const url = blobUrl(code)
   try {
@@ -451,11 +447,29 @@ async function addWorklet(ctx, code, name) {
 }
 
 async function start() {
+  if (AGENT.preview) return
+  exitSample()
+  const company = $('company').value.trim()
+  if (!company) { feedback('Enter the company name before starting your debrief.', true); $('company').focus(); return }
+  if (!navigator.mediaDevices?.getUserMedia) { feedback('Microphone access requires HTTPS or localhost.', true); return }
+  liveCompany = company
+  const generation = ++callGeneration
+  sessionId = null; selectedSession = null; pendingTools.length = 0; lastEvent = null
+  printedReply = liveReply = null
+  $('company').disabled = true
+  $('sample-btn').disabled = true
+  $('transcript').replaceChildren()
+  $('elapsed').textContent = '0:00'
+  feedback('')
   $('btn').disabled = true
   $('mic').disabled = true
   setStatus('connecting')
 
   try {
+    if (AGENT.config) {
+      const context = await fetch('/api/context?company=' + encodeURIComponent(company)).then(responseJSON)
+      AGENT.config = context.config
+    }
     // The API key never reaches the page; this token expires in 60 seconds.
     const res = await fetch('/token')
     if (!res.ok) {
@@ -500,6 +514,11 @@ async function start() {
     url.searchParams.set('token', token)
     ws = new WebSocket(url)
     let ready = false
+    const socket = ws
+    connectionDeadline = setTimeout(() => {
+      if (generation !== callGeneration || ready) return
+      setStatus('error', 'Connection timed out. Try again.'); socket.close(); reset()
+    }, 20000)
 
     // The API takes base64 inside JSON, not binary frames.
     capture.port.onmessage = ({ data }) => {
@@ -518,6 +537,7 @@ async function start() {
 
     // Everything about the agent lives server-side; the session just names it.
     ws.onopen = () => {
+      if (generation !== callGeneration) return
       if (AGENT.config) {
         // Inline mode: no stored agent; send the config fields directly.
         // Tools have to ride along -- the session service does not read them
@@ -538,14 +558,18 @@ async function start() {
     }
 
     ws.onmessage = ({ data }) => {
-      const msg = JSON.parse(data)
+      if (generation !== callGeneration) return
+      let msg
+      try { msg = JSON.parse(data) } catch { logEvent('down', 'protocol.error', 'Invalid message'); return }
       switch (msg.type) {
         case 'session.ready':
           ready = true
+          clearTimeout(connectionDeadline)
           sessionId = msg.session_id
           callStart = Date.now()
           timer = setInterval(tick, 1000)
           tick()
+          refreshLedger()
           setStatus('listening')
           $('btn').disabled = false
           $('btn').textContent = 'End call'
@@ -665,6 +689,8 @@ async function start() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               session_id: sessionId,
+              company: liveCompany,
+              call_id: msg.call_id,
               elapsed_seconds: Number(at),
               name: msg.name,
               arguments: args,
@@ -675,15 +701,17 @@ async function start() {
               return res.json()
             })
             .then(() => {
-              refreshLedger()
+              if (generation === callGeneration) refreshLedger()
               return { ok: true, recorded: true }
             })
             .catch(() => {
               logEvent('down', 'ledger.error', msg.name + ' was NOT saved')
+              if (generation === callGeneration) feedback('An item could not be saved. Ask your partner to retry before ending the debrief.', true)
               return { ok: false, recorded: false }
             })
             .then((result) => {
-              pendingTools.push({ call_id: msg.call_id, result: JSON.stringify(result) })
+              if (generation !== callGeneration || socket.readyState !== 1) return
+              pendingTools.push({ call_id: msg.call_id, result: JSON.stringify(result), is_error: !result.ok })
               flushTools()
             })
           break
@@ -692,12 +720,13 @@ async function start() {
         case 'session.ended':
           logEvent('down', msg.type)
           requestArchive()
-          ws.close()
+          socket.close()
           break
 
         case 'session.error':
           setStatus('error', msg.message)
           logEvent('down', msg.type, `${msg.code}: ${msg.message}`)
+          socket.close(); reset()
           break
 
         default:
@@ -705,8 +734,16 @@ async function start() {
       }
     }
 
-    ws.onclose = () => { setStatus('idle'); reset() }
-    ws.onerror = () => { setStatus('error', 'connection failed'); reset() }
+    ws.onclose = () => {
+      if (generation !== callGeneration) return
+      requestArchive()
+      if (!$('status').classList.contains('error')) setStatus('idle')
+      reset(); refreshLedger()
+    }
+    ws.onerror = () => {
+      if (generation !== callGeneration) return
+      setStatus('error', 'Connection failed. Please try again.'); socket.close(); reset()
+    }
   } catch (error) {
     setStatus('error', error.message)
     reset()
@@ -736,7 +773,16 @@ function stop() {
 }
 
 function reset() {
+  clearTimeout(connectionDeadline)
   clearInterval(timer)
+  mic?.getTracks().forEach(track => track.stop())
+  playback?.port.postMessage('stop')
+  captureCtx?.close().catch(() => {})
+  playbackCtx?.close().catch(() => {})
+  captureCtx = playbackCtx = playback = mic = null
+  pendingTools.length = 0; lastEvent = null
+  $('company').disabled = false
+  $('sample-btn').disabled = false
   stopEnergy()
   clearPartials()
   gateReset()
@@ -747,13 +793,13 @@ function reset() {
   open.clear()
   $('btn').disabled = false
   $('mic').disabled = false
-  $('btn').textContent = 'Start call'
+  $('btn').textContent = 'Start debrief ↗'
   $('btn').classList.remove('live')
 }
 
 function setStatus(state, detail) {
   $('status').className = 'status ' + state
-  $('status-text').textContent = detail || state
+  $('status-text').textContent = detail || ({idle:'Ready when you are',connecting:'Connecting…',listening:'Listening to you',speaking:'Your partner is speaking'}[state] || state)
 }
 
 // $4.50 an hour, the list price at assemblyai.com/pricing. Billing is per
@@ -922,283 +968,13 @@ function requestArchive() {
 }
 
 function flushTools() {
-  if (lastEvent !== 'reply.done' || !pendingTools.length) return
+  if (lastEvent !== 'reply.done' || !pendingTools.length || ws?.readyState !== 1) return
   for (const tool of pendingTools.splice(0)) {
     ws?.send(JSON.stringify({
       type: 'tool.result',
       call_id: tool.call_id,
       result: tool.result,
+      is_error: tool.is_error,
     }))
   }
 }
-
-function currentSessionId(ledger) {
-  const ids = Object.keys(ledger.sessions || {})
-  if (sessionId && ids.includes(sessionId)) return sessionId
-  return ids[ids.length - 1]
-}
-
-function noteFilename(company, sessionId) {
-  const slug = (company || '').trim().toLowerCase()
-    .replace(/[^a-z0-9\u4e00-\u9fff]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-  return (slug || 'session-' + sessionId.slice(-8)) + '-follow-up.md'
-}
-
-function downloadNote(sessionId, company) {
-  const url = '/api/note?session=' + encodeURIComponent(sessionId) +
-    '&company=' + encodeURIComponent(company || '')
-  fetch(url)
-    .then((res) => {
-      if (!res.ok) throw new Error('note request failed')
-      return res.text()
-    })
-    .then((markdown) => {
-      const blob = new Blob([markdown], { type: 'text/markdown' })
-      const a = document.createElement('a')
-      a.href = URL.createObjectURL(blob)
-      a.download = noteFilename(company, sessionId)
-      document.body.append(a)
-      a.click()
-      a.remove()
-      setTimeout(() => URL.revokeObjectURL(a.href), 1000)
-    })
-    .catch(() => {})
-}
-
-// Evidence is cited by when it was said, e.g. 00:42, not a bare second count.
-function stamp (seconds) {
-  if (seconds == null) return '--'
-  const total = Math.max(0, Math.floor(seconds))
-  const mm = String(Math.floor(total / 60)).padStart(2, '0')
-  const ss = String(total % 60).padStart(2, '0')
-  return mm + ':' + ss
-}
-
-function refreshLedger() {
-  fetch('/api/ledger')
-    .then((res) => res.json())
-    .then(renderLedger)
-    .catch(() => {})
-}
-
-function renderLedger(ledger) {
-  const body = $('ledger-body')
-  const sessions = ledger.sessions || {}
-  const ids = Object.keys(sessions)
-  body.replaceChildren()
-  if (!ids.length) {
-    const empty = document.createElement('div')
-    empty.className = 'empty'
-    empty.textContent = 'No records yet. Call the agent and it will log evidence and action items here.'
-    body.append(empty)
-    hideBanner()
-    return
-  }
-  const current = currentSessionId(ledger)
-  // Follow-up note download (roadmap W2 deliverable): one ledger session
-  // rendered as a Markdown note the investor can keep per company.
-  const noteBar = document.createElement('div')
-  noteBar.className = 'note-bar'
-  const companyInput = document.createElement('input')
-  companyInput.type = 'text'
-  companyInput.placeholder = 'Company (optional) - used in the note title & filename'
-  companyInput.setAttribute('aria-label', 'Company name')
-  const noteBtn = document.createElement('button')
-  noteBtn.type = 'button'
-  noteBtn.textContent = 'Download note (.md)'
-  noteBtn.onclick = () => downloadNote(current, companyInput.value)
-  noteBar.append(companyInput, noteBtn)
-  body.append(noteBar)
-  const escalations = []
-  for (const id of ids) {
-    const session = sessions[id]
-    const wrap = document.createElement('div')
-    wrap.className = 'ledger-session'
-    const head = document.createElement('div')
-    head.className = 'ledger-session-head'
-    head.textContent = (id === current ? '● ' : '') + id
-    wrap.append(head)
-    for (const event of session.events || []) {
-      const row = document.createElement('div')
-      row.className = 'ledger-event'
-      const meta = document.createElement('div')
-      meta.className = 'meta'
-      meta.textContent = stamp(event.at_seconds) + ' · ' + (event.tool || 'event')
-      row.append(meta)
-      if (event.tool === 'log_evidence') {
-        const badge = document.createElement('span')
-        badge.className = 'badge' + (event.escalation ? ' escalation' : '')
-        badge.textContent = event.escalation ? 'escalate' : (event.dimension || '')
-        const quote = document.createElement('div')
-        quote.className = 'quote'
-        quote.textContent = event.quote || ''
-        const signal = document.createElement('div')
-        signal.className = 'signal'
-        signal.textContent = event.signal || ''
-        meta.append(badge)
-        row.append(quote, signal)
-        if (event.escalation && id === current && event.signal) escalations.push(event.signal)
-      } else if (event.tool === 'add_action_item') {
-        const badge = document.createElement('span')
-        badge.className = 'badge action'
-        badge.textContent = 'action'
-        const task = document.createElement('div')
-        task.className = 'quote'
-        task.textContent = event.task || ''
-        const who = document.createElement('div')
-        who.className = 'signal'
-        who.textContent = (event.owner || '') + ' · ' + (event.deadline || '')
-        meta.append(badge)
-        row.append(task, who)
-      }
-      wrap.append(row)
-    }
-    body.append(wrap)
-  }
-  if (escalations.length) showBanner(escalations)
-  else hideBanner()
-}
-
-function showBanner(signals) {
-  $('escalation-text').textContent =
-    'Escalation flagged: ' + [...new Set(signals)].join('; ')
-  $('escalation-banner').hidden = false
-}
-
-function hideBanner() {
-  $('escalation-banner').hidden = true
-}
-
-// --- commitments (cross-debrief memory) ---
-
-function refreshCommitments() {
-  fetch('/api/history')
-    .then((res) => res.json())
-    .then(renderCommitments)
-    .catch(() => {})
-}
-
-function renderCommitments(history) {
-  const body = $('commitments-body')
-  body.replaceChildren()
-  const commitments = (history && history.commitments) || []
-  if (!commitments.length) {
-    body.append(el('div', 'empty',
-      'No previous commitments. Drop a data/history/<company>.json file in and ' +
-      'the next debrief for that company opens with a commitment check.'))
-    return
-  }
-  const head = el('div', 'commitments-head')
-  let label = 'Last debrief'
-  if (history.company) label += ' · ' + history.company
-  if (history.last_debrief_at) label += ' · ' + history.last_debrief_at.slice(0, 10)
-  head.textContent = label
-  body.append(head)
-  for (const c of commitments) {
-    const row = el('div', 'commitment')
-    row.append(el('div', 'commitment-task', c.task || ''))
-    const meta = (c.owner || '') + (c.deadline ? ' · due ' + c.deadline : '')
-    row.append(el('div', 'commitment-meta', meta))
-    body.append(row)
-  }
-}
-
-// --- offline (file-upload) analysis ---
-
-function el(tag, cls, text) {
-  const n = document.createElement(tag)
-  if (cls) n.className = cls
-  if (text != null) n.textContent = text
-  return n
-}
-
-function badge(text, escalation) {
-  const b = document.createElement('span')
-  b.className = 'badge' + (escalation ? ' escalation' : '')
-  b.textContent = text
-  return b
-}
-
-$('analyze-btn').onclick = () => $('file').click()
-
-$('file').onchange = async () => {
-  const f = $('file').files[0]
-  if (!f) return
-  $('file').value = ''
-  const btn = $('analyze-btn')
-  btn.disabled = true
-  btn.textContent = 'Analyzing\u2026'
-  try {
-    const res = await fetch('/api/upload', {
-      method: 'POST',
-      headers: { 'X-Filename': f.name },
-      body: f,
-    })
-    const data = await res.json().catch(() => ({}))
-    if (!res.ok) throw new Error(data.error || 'upload failed')
-    renderOffline(data, f.name)
-  } catch (e) {
-    renderOfflineError(e.message)
-  } finally {
-    btn.disabled = false
-    btn.textContent = 'Analyze recording'
-  }
-}
-
-$('offline-close').onclick = () => { $('offline-result').hidden = true }
-
-function renderOfflineError(message) {
-  $('offline-title').textContent = 'Recording analysis'
-  const body = $('offline-body')
-  body.replaceChildren(el('div', 'empty', 'Error: ' + message))
-  $('offline-result').hidden = false
-}
-
-function renderOffline(data, name) {
-  const lang = data.language ? ' (' + data.language + ')' : ''
-  $('offline-title').textContent = 'Recording analysis \u2014 ' + name + lang
-  const body = $('offline-body')
-  body.replaceChildren()
-
-  if (data.text) {
-    body.append(el('h3', 'Transcript'))
-    body.append(el('div', 'offline-transcript', data.text))
-  }
-
-  const a = data.analysis || {}
-  const signals = a.signals || []
-  const questions = a.questions || []
-
-  if (signals.length) {
-    body.append(el('h3', 'Signals (' + signals.length + ')'))
-    for (const s of signals) {
-      const row = el('div', 'offline-signal')
-      const meta = el('div', 'meta')
-      meta.append(badge(s.escalation ? 'escalate' : s.dimension, s.escalation))
-      row.append(meta)
-      if (s.signal) row.append(el('div', null, s.signal))
-      if (s.quote) row.append(el('div', 'quote', s.quote))
-      body.append(row)
-    }
-  }
-
-  if (questions.length) {
-    body.append(el('h3', 'Follow-up questions'))
-    for (const q of questions) {
-      const row = el('div', 'offline-question')
-      row.append(el('span', 'q', '\u2192'))
-      row.append(el('span', null, q.question))
-      body.append(row)
-    }
-  }
-
-  if (!data.text && !signals.length && !questions.length) {
-    body.append(el('div', 'empty', 'No transcript returned.'))
-  }
-  $('offline-result').hidden = false
-}
-
-// Default side pane to Ledger - the product view. Events stays available as
-// a tab for tuning and debugging.
-showTab('ledger')

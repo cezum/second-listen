@@ -92,9 +92,9 @@ def transcribe(audio_bytes: bytes, filename: str, timeout: float = 300.0) -> dic
     """
     # 1. Upload the raw audio as the request body to get a short-lived URL.
     #    Upload gets the longest socket timeout — it moves the whole file.
-    up = _request_retry(f"{API_BASE}/upload", "POST",
-                        {**_auth(), "Content-Type": _mime_for(filename)},
-                        audio_bytes, timeout=300.0)
+    up = _request_retry(f"{API_BASE}/upload", method="POST",
+                        headers={**_auth(), "Content-Type": _mime_for(filename)},
+                        data=audio_bytes, timeout=300.0)
     upload_url = json.loads(up).get("upload_url")
     if not upload_url:
         raise TranscribeError(f"upload failed: {up.decode()}")
@@ -108,9 +108,9 @@ def transcribe(audio_bytes: bytes, filename: str, timeout: float = 300.0) -> dic
         "speech_models": ["universal-2"],
         "language_detection": True,
     }).encode()
-    sub = _request_retry(f"{API_BASE}/transcript", "POST",
-                         {**_auth(), "Content-Type": "application/json"},
-                         payload)
+    sub = _request_retry(f"{API_BASE}/transcript", method="POST",
+                         headers={**_auth(), "Content-Type": "application/json"},
+                         data=payload)
     transcript_id = json.loads(sub).get("id")
     if not transcript_id:
         raise TranscribeError(f"transcript submit failed: {sub.decode()}")

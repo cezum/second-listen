@@ -8,6 +8,7 @@ import json
 import os
 import re
 import sys
+import tempfile
 import time
 import urllib.error
 import urllib.parse
@@ -82,9 +83,15 @@ def atomic_write_text(path: Path, text: str) -> None:
     (latest_history() feeds server startup, so a half-written history file
     used to mean the server would not boot)."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(text, encoding="utf-8")
-    os.replace(tmp, path)
+    # Concurrent writers must not share a staging file.
+    with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8",
+                                     dir=path.parent, delete=False) as handle:
+        tmp = Path(handle.name)
+        handle.write(text)
+    try:
+        os.replace(tmp, path)
+    finally:
+        tmp.unlink(missing_ok=True)
 
 
 def read_json(path: Path, default: Any = None) -> Any:

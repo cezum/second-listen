@@ -29,6 +29,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from lib import read_json
+from history_from_ledger import slugify
 
 ROOT = Path(__file__).resolve().parent
 HISTORY_DIR = ROOT / "data" / "history"
@@ -41,7 +42,7 @@ def list_companies() -> list[str]:
 def load_history(company: str) -> Optional[dict]:
     # read_json returns None for a missing OR corrupt file -- a half-written
     # history file must not kill the publish/boot path that reads it.
-    return read_json(HISTORY_DIR / f"{company}.json")
+    return read_json(HISTORY_DIR / f"{slugify(company)}.json")
 
 
 def latest_history() -> Optional[dict]:
@@ -53,8 +54,8 @@ def latest_history() -> Optional[dict]:
 
 
 def _pick_history() -> Optional[dict]:
-    company = os.environ.get("HISTORY_COMPANY", "").strip()
-    return load_history(company) if company else latest_history()
+    company = (os.environ.get("HISTORY_COMPANY") or os.environ.get("COMPANY") or "").strip()
+    return load_history(company) if company else None
 
 
 def _commitment_greeting(history: dict) -> Optional[str]:
@@ -107,13 +108,13 @@ def _summary_prompt(history: dict) -> str:
     return "\n\n".join(parts)
 
 
-def apply_history(agent: dict) -> bool:
+def apply_history(agent: dict, company: Optional[str] = None) -> bool:
     """Inject the previous session's summary into the agent, in place.
 
     Returns True when a history file was found and applied, False when there is
     nothing to inject (and the agent is left untouched).
     """
-    history = _pick_history()
+    history = load_history(company) if company else _pick_history()
     if not history or not history.get("commitments"):
         return False
     greeting = _commitment_greeting(history)
