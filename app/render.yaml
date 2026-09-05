@@ -11,6 +11,10 @@ services:
       # be changed afterwards under Environment on the service.
       - key: ASSEMBLYAI_API_KEY
         sync: false
+      # Remote live workspaces require a password. Share this only with invited
+      # testers; it protects the token, ledger, notes, and company history.
+      - key: APP_PASSWORD
+        sync: false
       # Containers must listen on all interfaces to be reachable; the server
       # binds loopback unless HOST says otherwise (local runs stay private).
       - key: HOST

@@ -30,6 +30,16 @@ python deployment/browser/server.py     # open http://localhost:3000
 
 Optional: `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL` in `.env` switch upload-mode analysis from the built-in keyword fallback to an LLM.
 
+## Lowest-friction private trial
+
+For a no-install trial, deploy `app/` to Render using `app/render.yaml`. Set
+`ASSEMBLYAI_API_KEY` and a strong `APP_PASSWORD` when Render asks for the
+secrets, then share the generated HTTPS URL and password with invited testers.
+The page opens in a browser; no GitHub account, Python, or local setup is
+needed. The Sample Debrief is available without spending API credits. Live
+voice and recording upload consume the configured AssemblyAI/LLM quotas, so
+keep the link private and tell testers before they start either mode.
+
 ## Zero third-party dependencies
 
 The entire backend is **Python standard library only** — `requirements.txt` installs nothing, all HTTP calls use `urllib`, all audio transport happens in the browser (`AudioContext` + `AudioWorklet`) directly against the AssemblyAI WebSocket. The local server is a thin `ThreadingHTTPServer` that mints 60-second tokens and persists tool calls.

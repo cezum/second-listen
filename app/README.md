@@ -135,7 +135,7 @@ Twilio passes the call to AssemblyAI over SIP, so nothing in this repo sits in t
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/AssemblyAI/voice-agent-starter-python)
 
-Render reads [render.yaml](render.yaml) and prompts for exactly one value, `ASSEMBLYAI_API_KEY`, because that is the only variable marked `sync: false`. It sets `PORT` itself. The other two arrive with defaults you can change under Environment on the service:
+Render reads [render.yaml](render.yaml) and prompts for `ASSEMBLYAI_API_KEY` and `APP_PASSWORD`. Set both: the first is the AssemblyAI credential, and the second protects the remote workspace from anyone who discovers the URL. It sets `PORT` itself. The other values arrive with defaults you can change under Environment on the service:
 
 | Variable | Default | What it does |
 | --- | --- | --- |
