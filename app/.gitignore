@@ -2,3 +2,4 @@ node_modules/
 .env
 agents/*.env
 data/
+_up.json
