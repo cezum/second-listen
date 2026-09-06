@@ -458,11 +458,16 @@ function playSampleLine(index, run) {
   }
   const [who, text] = SAMPLE_LINES[index]
   appendSampleLine(who, text)
-  if (index === 0) renderSampleEvents(1)
-  if (index === 2) renderSampleEvents(3)
-  if (index === 6) renderSampleEvents(4)
   if (typeof setStatus === 'function') setStatus(who === 'partner' ? 'speaking' : 'listening', who === 'partner' ? 'Sample partner is speaking' : 'Sample investor is speaking')
-  sampleSpeech(text, who, () => playSampleLine(index + 1, run))
+  sampleSpeech(text, who, () => {
+    // Reveal the evidence only after the sentence that supports it has been
+    // spoken, so the walkthrough preserves the cause-and-effect sequence.
+    if (!sampleMode || run !== sampleRun) return
+    if (index === 0) renderSampleEvents(1)
+    if (index === 2) renderSampleEvents(3)
+    if (index === 6) renderSampleEvents(4)
+    playSampleLine(index + 1, run)
+  })
 }
 
 $('sample-btn').onclick = () => {
