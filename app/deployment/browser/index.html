@@ -5,79 +5,143 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="Turn the details from a founder call into traceable risk signals and agreed follow-ups. A voice debrief partner powered by AssemblyAI.">
 <title>Second Listen · The details worth following up</title>
-<link rel="stylesheet" href="/styles.css?v=8">
+<link rel="stylesheet" href="/styles.css?v=20">
 </head>
 <body>
 <main>
-  <header class="topbar">
-    <a class="brand" href="/" aria-label="Second Listen home"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>Second Listen<span class="brand-dot">.</span></a>
-    <span class="workspace-label">THE POST-CALL WORKSPACE</span>
-    <span class="powered">Voice powered by <strong>AssemblyAI</strong></span>
-    <button class="ghost" id="log-toggle" aria-label="Toggle evidence panel">Hide panel</button>
+  <header class="top">
+    <span class="wordmark">Second Listen<i>.</i></span>
+    <span class="tagline">Post-call debrief notes with evidence — speak freely, keep the quotes.</span>
+    <button id="sample-btn" class="top-link" type="button">Watch a sample ↗</button>
   </header>
-
-  <section class="intro" aria-labelledby="headline">
-    <div>
-      <p class="eyebrow">FOR THE DETAILS THAT DON'T MAKE THE DASHBOARD</p>
-      <h1 id="headline">A second listen.<br><em>A better follow-up.</em></h1>
-      <p class="intro-copy">Debrief a founder call. Catch the signals hidden in passing remarks.<br>Leave with the evidence and the next question to ask.</p>
-    </div>
-    <div class="intro-aside">
-      <div class="flow"><span>01 <b>Debrief</b></span><span>02 <b>Clarify</b></span><span>03 <b>Follow through</b></span></div>
-      <p>A focused workspace for venture investors<br>and portfolio teams. You make the judgment.</p>
-      <button id="sample-btn" class="secondary">Explore a sample debrief <span aria-hidden="true">↗</span></button>
-      <span class="sample-caption">Fictional example · no microphone or API call</span>
-    </div>
-  </section>
 
   <div id="preview-notice" class="notice" hidden>Sample preview · Live voice and uploads are disabled. Explore the fictional debrief below.</div>
   <div id="feedback" class="notice" role="status" aria-live="polite" hidden></div>
-  <section class="session-bar" aria-label="Debrief setup">
-    <label class="company-field"><span class="eyebrow">COMPANY</span><input id="company" maxlength="120" placeholder="e.g. GreenLeaf" autocomplete="off"></label>
-    <div class="session-info"><span class="status idle" id="status" role="status"><span id="status-text">Ready when you are</span></span><span class="meter"><span id="elapsed">0:00</span><span id="cost" hidden>$0.000</span><span>Live replies in English</span></span></div>
-    <input type="file" id="file" accept="audio/*,.ogg,.mp3,.wav,.m4a,.mp4,.webm,.flac,.aac,.opus" hidden>
-    <button class="secondary" id="analyze-btn">Analyze recording <span aria-hidden="true">↑</span></button>
+
+  <section class="sheet offline" id="offline-result" hidden aria-label="Recording analysis">
+    <div class="letterhead"><span class="lh-title">SECOND LISTEN — RECORDING NOTE</span><button class="foot-link" id="offline-close" type="button">Close ✕</button><span class="lh-status" id="offline-status">UPLOADED</span></div>
+    <div class="pane-pad" id="offline-body"></div>
   </section>
 
-  <div id="escalation-banner" role="status" hidden><span class="flag" aria-hidden="true">!</span><span id="escalation-text"></span><span class="review-label">HUMAN REVIEW</span></div>
-  <section class="pane" id="offline-result" hidden aria-label="Recording analysis">
-    <div class="pane-head"><h2 id="offline-title">Recording analysis</h2><button class="ghost" id="offline-close">Close</button></div>
-    <div class="pane-body" id="offline-body"></div>
-  </section>
+  <div class="work">
+    <!-- Left: the recorder. One primary action; everything else is a quiet link. -->
+    <section class="console" aria-label="Debrief console">
+      <div id="console-idle">
+        <p class="eyebrow">Debrief</p>
+        <h1>What happened on the call?</h1>
+        <p class="sub">Speak for two minutes, as you remember it. The partner listens for what changed, asks one focused question at a time, and files every signal with the quote behind it.</p>
+        <div class="field">
+          <label for="company">Company</label>
+          <input id="company" maxlength="120" placeholder="e.g. GreenLeaf" autocomplete="off">
+        </div>
+        <button class="start" id="btn" type="button"><span class="rec-dot" aria-hidden="true"></span>Start debrief</button>
+        <div class="alt">
+          <button class="linklike" id="analyze-btn" type="button">Upload a recording →</button>
+        </div>
+        <input type="file" id="file" accept="audio/*,.ogg,.mp3,.wav,.m4a,.mp4,.webm,.flac,.aac,.opus" hidden>
+        <select id="mic" aria-label="Microphone" hidden><option value="">Default microphone</option></select>
+        <span id="cost" hidden></span>
+        <p class="consent">Starting a debrief sends your voice to AssemblyAI for transcription. Use material you have permission to share. The partner replies in English; uploaded recordings are analyzed in their own language.</p>
+      </div>
 
-  <div class="panes">
-    <section class="pane conversation">
-      <div class="pane-head"><h2><span class="section-number">01</span> The conversation</h2><span class="eyebrow" id="conversation-label">LIVE DEBRIEF</span></div>
-      <div class="pane-body" id="transcript" role="log" aria-label="Conversation transcript" aria-live="polite">
-        <div class="welcome empty">
-          <div class="listen-glyph" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
-          <h3>What happened on the call?</h3>
-          <p>Tell it as you remember it. Your debrief partner listens for what changed and asks one focused question at a time.</p>
-          <div class="prompt-example"><span>YOU COULD START WITH</span><p>“The founder seemed upbeat. Revenue is steady, but their CFO left last month…”</p></div>
+      <div id="console-live">
+        <div class="live-head">
+          <span class="rec-flag" id="rec-flag"><i aria-hidden="true"></i>REC</span>
+          <span class="sample-flag" id="sample-flag" hidden>FICTIONAL WALKTHROUGH</span>
+          <span class="clock" id="elapsed">0:00</span>
+          <button class="stop" id="btn-stop" type="button">End debrief</button>
+          <button class="stop" id="sample-close" type="button" hidden>Close ×</button>
+        </div>
+        <div class="call-status"><span id="status" class="status idle" role="status"><span id="status-text">Ready when you are</span></span></div>
+        <div id="transcript" role="log" aria-label="Conversation transcript" aria-live="polite">
+          <div class="welcome empty">
+            <h3>It's your note to dictate.</h3>
+            <p>Start with whatever stuck: a number, a departure, a promise. The partner asks one question at a time.</p>
+            <div class="prompt-example"><span>YOU COULD START WITH</span><p>“The founder seemed upbeat. Revenue is steady, but their CFO left last month…”</p></div>
+          </div>
+        </div>
+        <p class="live-hint" id="live-hint">Evidence is filed to the note on the right as you speak →</p>
+      </div>
+    </section>
+
+    <!-- Right: the risk note. A document, not a dashboard. -->
+    <section class="sheet" id="sheet" aria-label="Debrief risk note">
+      <div class="letterhead"><span class="lh-title">SECOND LISTEN — POST-CALL RISK NOTE</span><span class="lh-status" id="lh-status">DRAFT</span></div>
+
+      <div id="note-empty" class="pane-pad">
+        <p class="empty-line">No debrief yet.</p>
+        <p class="empty-hint">Start on the left — signals, quotes and agreed actions are filed here while you speak.</p>
+        <div class="sect">
+          <div class="sect-head" id="prev-head-empty">From last debrief</div>
+          <div id="prev-empty"></div>
+        </div>
+        <div class="sect">
+          <div class="sect-head">Needs your review</div>
+          <div class="ghost-row"><span class="gid">R-01</span><span>Signals that trip a checklist item are filed here, with the quote and the second it was said. The flag is a prompt — the call is yours.</span></div>
+          <div class="sect-head">Agreed actions</div>
+          <div class="ghost-row"><span class="gid">A-01</span><span>Follow-ups you agree out loud — each with an owner and a deadline.</span></div>
         </div>
       </div>
-      <div class="pane-foot"><select id="mic" aria-label="Microphone"><option value="">Default microphone</option></select><button id="btn">Start debrief <span aria-hidden="true">↗</span></button></div>
-      <p class="consent">Starting sends your voice to AssemblyAI. Recordings use AssemblyAI transcription and your configured analysis provider. Use material you have permission to share.</p>
-    </section>
-    <section class="pane" id="side" aria-label="Debrief evidence and follow-ups">
-      <div class="pane-head"><h2><span class="section-number">02</span> What needs a closer look</h2><button class="ghost" id="ledger-reset" hidden disabled>Reset</button></div>
-      <div class="tabs" role="tablist" aria-label="Debrief details">
-        <button class="tab on" role="tab" aria-selected="true" aria-controls="ledger-body" id="tab-ledger">Evidence</button>
-        <button class="tab" role="tab" aria-selected="false" aria-controls="commitments-body" id="tab-commitments">Previous follow-ups</button>
-        <button class="tab debug-tab" role="tab" aria-selected="false" aria-controls="events-body" id="tab-events">Events</button>
-        <button class="tab debug-tab" role="tab" aria-selected="false" aria-controls="agent-body" id="tab-agent">Agent</button>
+
+      <div id="note-filled" hidden>
+        <div class="note-head">
+          <div>
+            <h2 class="note-company" id="note-company">—</h2>
+            <p class="note-sub" id="note-sub"></p>
+          </div>
+          <label class="session-pick" id="session-pick-wrap" hidden>Debrief <select id="session-pick" aria-label="Choose a debrief"></select></label>
+        </div>
+
+        <div class="stats">
+          <span class="stat"><b id="st-signals">0</b> signals</span>
+          <span class="stat hot"><b id="st-review">0</b> to review</span>
+          <span class="stat"><b id="st-actions">0</b> actions</span>
+          <button class="export" id="note-download" type="button">Export note · .md ↓</button>
+        </div>
+
+        <div class="sect" id="sec-prev">
+          <div class="sect-head" id="prev-head">From last debrief</div>
+          <div id="prev-list"></div>
+        </div>
+        <div class="sect" id="sec-review" style="display:none">
+          <div class="sect-head">Needs your review <span class="count" id="cnt-review"></span></div>
+          <div id="list-review"></div>
+        </div>
+        <div class="sect" id="sec-signals" style="display:none">
+          <div class="sect-head">Other observations <span class="count" id="cnt-signals"></span></div>
+          <div id="list-signals"></div>
+        </div>
+        <div class="sect" id="sec-actions" style="display:none">
+          <div class="sect-head">Agreed actions <span class="count" id="cnt-actions"></span></div>
+          <div id="list-actions"></div>
+        </div>
+
+        <div class="note-foot">
+          <button class="ghost-btn" id="note-save" type="button" hidden>Save follow-up for next debrief →</button>
+          <span class="trust">Quotes are the source. Review flags stay with you.</span>
+        </div>
       </div>
-      <div class="pane-body" id="ledger-body" role="tabpanel" aria-labelledby="tab-ledger"></div>
-      <div class="pane-body" id="commitments-body" role="tabpanel" aria-labelledby="tab-commitments" hidden></div>
-      <div class="pane-body" id="events-body" role="tabpanel" aria-labelledby="tab-events" hidden><p class="empty">Connection events appear here during a live debrief.</p></div>
-      <div class="pane-body" id="agent-body" role="tabpanel" aria-labelledby="tab-agent" hidden><p class="empty">Loading agent configuration.</p></div>
-      <div class="evidence-footer"><span class="tiny-dot"></span> Quotes first. Assumptions checked. Final decisions stay with you.</div>
     </section>
   </div>
-  <footer class="page-footer"><span>SECOND LISTEN <span class="footer-divider">/</span> A conversation becomes a record.</span><span>Built for the lablab.ai × AssemblyAI hackathon · 2026</span></footer>
+
+  <footer class="page-foot">
+    <span>SECOND LISTEN — a conversation becomes a record.</span>
+    <span>Built for the lablab.ai × AssemblyAI hackathon · 2026 · <button class="foot-link" id="debug-toggle" type="button">events</button></span>
+  </footer>
+
+  <!-- Debug drawer for live-session inspection; not part of the product flow. -->
+  <div id="debug" hidden>
+    <div class="debug-tabs">
+      <button id="tab-events" class="dtab on" type="button" role="tab" aria-selected="true">Events</button>
+      <button id="tab-agent" class="dtab" type="button" role="tab" aria-selected="false">Agent</button>
+      <button class="dtab" id="debug-close" type="button">Close ✕</button>
+    </div>
+    <div id="events-body" class="debug-body" role="tabpanel"><p class="empty">Connection events appear here during a live debrief.</p></div>
+    <div id="agent-body" class="debug-body" role="tabpanel" hidden><p class="empty">Loading agent configuration.</p></div>
+  </div>
 </main>
 <script>window.AGENT = {{AGENT_JSON}}</script>
-<script src="/app.js?v=8"></script>
-<script src="/workspace.js?v=8"></script>
+<script src="/app.js?v=9"></script>
+<script src="/workspace.js?v=9"></script>
 </body>
 </html>

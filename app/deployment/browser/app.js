@@ -394,20 +394,18 @@ listMics().catch(() => {})
 navigator.mediaDevices?.addEventListener?.('devicechange', listMics)
 
 $('btn').onclick = () => (ws?.readyState <= 1 ? stop() : start())
-$('log-toggle').onclick = () => {
-  const hidden = document.body.classList.toggle('no-side')
-  $('log-toggle').textContent = hidden ? 'Show panel' : 'Hide panel'
-}
 
-// --- side pane tabs ---
+// --- side pane tabs (debug drawer: events / agent) ---
 let agentLoaded = false
 
 function showTab(name) {
-  for (const tab of ['events', 'agent', 'ledger', 'commitments']) {
-    $('tab-' + tab).classList.toggle('on', tab === name)
-    $('tab-' + tab).setAttribute('aria-selected', String(tab === name))
-    $('tab-' + tab).tabIndex = tab === name ? 0 : -1
-    $(tab + '-body').hidden = tab !== name
+  for (const tab of ['events', 'agent']) {
+    const button = $('tab-' + tab), panel = $(tab + '-body')
+    if (!button || !panel) continue
+    button.classList.toggle('on', tab === name)
+    button.setAttribute('aria-selected', String(tab === name))
+    button.tabIndex = tab === name ? 0 : -1
+    panel.hidden = tab !== name
   }
   if (name === 'agent' && !agentLoaded) {
     agentLoaded = true
@@ -424,18 +422,9 @@ function showTab(name) {
         $('agent-body').textContent = 'Could not load the agent.'
       })
   }
-  if (name === 'ledger') {
-    $('ledger-reset').hidden = true
-    refreshLedger()
-  } else {
-    $('ledger-reset').hidden = true
-  }
-  if (name === 'commitments') refreshCommitments()
 }
 $('tab-events').onclick = () => showTab('events')
 $('tab-agent').onclick = () => showTab('agent')
-$('tab-ledger').onclick = () => showTab('ledger')
-$('tab-commitments').onclick = () => showTab('commitments')
 async function addWorklet(ctx, code, name) {
   const url = blobUrl(code)
   try {
@@ -572,7 +561,6 @@ async function start() {
           refreshLedger()
           setStatus('listening')
           $('btn').disabled = false
-          $('btn').textContent = 'End call'
           $('btn').classList.add('live')
           logEvent('down', msg.type, msg.session_id)
           break
@@ -793,11 +781,12 @@ function reset() {
   open.clear()
   $('btn').disabled = false
   $('mic').disabled = false
-  $('btn').textContent = 'Start debrief ↗'
   $('btn').classList.remove('live')
 }
 
 function setStatus(state, detail) {
+  // The console swaps between the idle card and the live recorder on this class.
+  document.body.classList.toggle('calling', state !== 'idle')
   $('status').className = 'status ' + state
   $('status-text').textContent = detail || ({idle:'Ready when you are',connecting:'Connecting…',listening:'Listening to you',speaking:'Your partner is speaking'}[state] || state)
 }

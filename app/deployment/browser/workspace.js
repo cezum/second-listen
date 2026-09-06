@@ -1,10 +1,11 @@
-// Product UI; audio transport and AssemblyAI event handling remain in app.js.
+// Product UI for the v2 layout: the recorder on the left, the risk note on
+// the right. Audio transport and AssemblyAI event handling remain in app.js.
 let selectedSession = null
 let lastLedger = { sessions: {} }
 let sampleMode = false
 let liveCompany = ''
 let companyBeforeSample = ''
-let offlineData = null
+const seenEntries = new Set()
 const SAMPLE_ID = 'sample-greenleaf'
 const SAMPLE = {
   company: 'GreenLeaf', started_at: '2026-09-05T09:00:00Z', sample: true,
@@ -15,6 +16,10 @@ const SAMPLE = {
     { tool: 'add_action_item', at_seconds: 54, task: 'Request written approval for the grant reallocation', owner: 'Alex', deadline: 'Next Monday' },
   ],
 }
+const SAMPLE_HISTORY = {
+  company: 'GreenLeaf', last_debrief_at: '2026-08-28',
+  commitments: [{ task: 'Confirm who is covering finance after the CFO departure', owner: 'Alex', deadline: 'This debrief' }],
+}
 const DIMENSION_LABELS = { operations: 'Operations', exit_potential: 'Exit outlook', self_funding: 'Cash generation', team_integrity: 'Team', financial_health: 'Financial health' }
 
 function el(tag, cls, text) {
@@ -23,7 +28,6 @@ function el(tag, cls, text) {
   if (text != null) node.textContent = text
   return node
 }
-function badge(text, escalation = false) { return el('span', 'badge' + (escalation ? ' escalation' : ''), text) }
 function feedback(message, error = false) {
   $('feedback').textContent = message
   $('feedback').className = 'notice' + (error ? ' error' : '')
@@ -46,6 +50,187 @@ function stamp(seconds) {
   const total = Math.max(0, Math.floor(seconds))
   return String(Math.floor(total / 60)).padStart(2, '0') + ':' + String(total % 60).padStart(2, '0')
 }
+function pad(n) { return n < 10 ? '0' + n : '' + n }
+
+// ---------- the note ----------
+
+function noteStatus(escalations) {
+  const node = $('lh-status')
+  if (ws?.readyState === 1) { node.textContent = '● LIVE'; node.className = 'lh-status' }
+  else if (escalations) { node.textContent = '● ' + escalations + ' TO REVIEW'; node.className = 'lh-status' }
+  else { node.textContent = 'FILED'; node.className = 'lh-status filed' }
+}
+
+function evidenceRow(event, eid, fresh) {
+  const row = el('article', 'entry' + (event.escalation ? ' review' : '') + (fresh ? ' flash' : ''))
+  row.append(el('span', 'eid', eid))
+  const main = el('div')
+  const meta = el('div', 'entry-meta')
+  meta.append(el('span', 'dim', DIMENSION_LABELS[event.dimension] || 'Evidence'))
+  if (event.escalation) meta.append(el('span', 'chip', 'Review'))
+  const cite = el('span', 'cite', 'said at ' + stamp(event.at_seconds))
+  cite.title = sampleMode ? 'Illustrative timestamp' : 'Time recorded in the live session, not a word-aligned audio citation'
+  meta.append(cite)
+  main.append(meta, el('p', 'signal', event.signal))
+  const quote = el('button', 'quote quote-btn', '“' + event.quote + '”')
+  quote.type = 'button'
+  quote.title = 'Locate this quote in the conversation'
+  quote.onclick = () => highlightQuote(event.quote)
+  main.append(quote)
+  row.append(main)
+  return row
+}
+
+function actionRow(event, eid, fresh) {
+  const row = el('article', 'entry action' + (fresh ? ' flash' : ''))
+  row.append(el('span', 'eid', eid))
+  const main = el('div')
+  main.append(el('p', 'task', event.task), el('p', 'task-meta', 'Owner ' + event.owner + ' · due ' + event.deadline + ' · agreed at ' + stamp(event.at_seconds)))
+  row.append(main)
+  return row
+}
+
+function commitmentRow(c) {
+  const row = el('label', 'commit')
+  const box = document.createElement('input')
+  box.type = 'checkbox'
+  box.onclick = () => row.classList.toggle('checked', box.checked)
+  const wrap = el('span')
+  wrap.append(el('span', 'task', c.task), el('span', 'commit-meta', c.owner + ' · due ' + c.deadline))
+  row.append(box, wrap)
+  return row
+}
+
+function renderLedger(ledger) {
+  if (!sampleMode) lastLedger = ledger
+  const ids = Object.keys(ledger.sessions || {})
+  const current = currentSessionId(ledger)
+  const session = ledger.sessions[current]
+  if (current !== renderLedger.lastId) { seenEntries.clear(); renderLedger.lastId = current }
+
+  if (!session) {
+    $('note-empty').hidden = false
+    $('note-filled').hidden = true
+    $('lh-status').textContent = 'DRAFT'; $('lh-status').className = 'lh-status'
+    refreshPrev()
+    return
+  }
+
+  $('note-empty').hidden = true
+  $('note-filled').hidden = false
+
+  const events = [...(session.events || [])].sort((a, b) => (a.at_seconds ?? 0) - (b.at_seconds ?? 0))
+  const evidence = events.filter(e => e.tool === 'log_evidence')
+  const actions = events.filter(e => e.tool === 'add_action_item')
+  const escalations = evidence.filter(e => e.escalation)
+
+  $('note-company').textContent = session.company || 'Unassigned company'
+  const started = (session.started_at || '').slice(0, 16).replace('T', ' ')
+  $('note-sub').textContent = 'Debrief · ' + (started || 'date unknown') + ' · ref ' + String(current).slice(-8)
+  noteStatus(escalations.length)
+
+  // Session picker, for reading past debriefs of any company.
+  const pickerWrap = $('session-pick-wrap')
+  if (!sampleMode && ids.length > 1 && ws?.readyState !== 1) {
+    pickerWrap.hidden = false
+    const select = $('session-pick')
+    select.replaceChildren()
+    for (const id of ids.sort((a, b) => (ledger.sessions[b].started_at || '').localeCompare(ledger.sessions[a].started_at || ''))) {
+      const entry = ledger.sessions[id]
+      const option = el('option', '', (entry.company || 'Unassigned') + ' · ' + (entry.started_at || '').slice(5, 10))
+      option.value = id; option.selected = id === current
+      select.append(option)
+    }
+    select.onchange = () => { selectedSession = select.value; renderLedger(lastLedger) }
+  } else pickerWrap.hidden = true
+
+  const listReview = $('list-review'); listReview.replaceChildren()
+  const listSignals = $('list-signals'); listSignals.replaceChildren()
+  const listActions = $('list-actions'); listActions.replaceChildren()
+  evidence.forEach((event, i) => {
+    const eid = 'R-' + pad(i + 1), fresh = !seenEntries.has(eid + current)
+    seenEntries.add(eid + current)
+    ;(event.escalation ? listReview : listSignals).append(evidenceRow(event, eid, fresh))
+  })
+  actions.forEach((event, i) => {
+    const eid = 'A-' + pad(i + 1), fresh = !seenEntries.has(eid + current)
+    seenEntries.add(eid + current)
+    listActions.append(actionRow(event, eid, fresh))
+  })
+  $('sec-review').style.display = listReview.children.length ? '' : 'none'
+  $('sec-signals').style.display = listSignals.children.length ? '' : 'none'
+  $('sec-actions').style.display = listActions.children.length ? '' : 'none'
+  $('st-signals').textContent = evidence.length
+  $('st-review').textContent = escalations.length
+  $('st-actions').textContent = actions.length
+  $('cnt-review').textContent = escalations.length ? '· ' + escalations.length : ''
+  $('cnt-signals').textContent = (evidence.length - escalations.length) ? '· ' + (evidence.length - escalations.length) : ''
+  $('cnt-actions').textContent = actions.length ? '· ' + actions.length : ''
+
+  $('note-download').onclick = () => downloadNote(current, session.company)
+
+  const save = $('note-save')
+  if (actions.length && !sampleMode && session.company) {
+    save.hidden = false
+    save.disabled = ws?.readyState === 1
+    save.title = save.disabled ? 'End the debrief before saving its agreed actions' : 'Carry agreed actions into the next call for this company'
+    save.onclick = async () => {
+      save.disabled = true
+      try {
+        const result = await fetch('/api/history', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session_id: current, company: session.company }) }).then(responseJSON)
+        $('company').value = session.company
+        feedback(`${result.commitments} follow-up(s) saved for ${session.company}. Start the next inline debrief with this company to check them. These are recorded tasks, not scheduled notifications.`)
+        refreshPrev()
+      } catch (error) { feedback(error.message, true) }
+      finally { save.disabled = ws?.readyState === 1 }
+    }
+  } else save.hidden = true
+
+  refreshPrev()
+}
+
+// ---------- previous commitments ("from last debrief") ----------
+
+function refreshPrev() {
+  if (sampleMode) return renderPrev(SAMPLE_HISTORY, true)
+  const company = (ws?.readyState === 1 ? liveCompany : $('company').value).trim()
+  if (!company) return renderPrev({}, false)
+  return fetch('/api/history?company=' + encodeURIComponent(company)).then(responseJSON).then(v => renderPrev(v, false)).catch(() => {})
+}
+function renderPrev(value, isSample) {
+  const commitments = value.commitments || []
+  // Filled note.
+  const list = $('prev-list'); list.replaceChildren()
+  $('prev-head').textContent = 'From last debrief' + (value.last_debrief_at ? ' · ' + value.last_debrief_at.slice(0, 10) : '')
+  if (isSample) list.append(el('div', 'sample-note', 'FICTIONAL PREVIOUS DEBRIEF · HOW THE COMMITMENT CHECK OPENS A CALL'))
+  if (commitments.length) {
+    for (const c of commitments) list.append(commitmentRow(c))
+    $('sec-prev').style.display = ''
+  } else $('sec-prev').style.display = 'none'
+  // Empty note.
+  const emptyList = $('prev-empty'); emptyList.replaceChildren()
+  $('prev-head-empty').textContent = 'From last debrief' + (value.last_debrief_at ? ' · ' + value.last_debrief_at.slice(0, 10) : '')
+  if (commitments.length) {
+    for (const c of commitments) emptyList.append(commitmentRow(c))
+  } else {
+    emptyList.append(el('p', 'empty', 'No saved follow-ups for this company yet. Save a debrief’s agreed actions, and the next one opens by checking them.'))
+  }
+}
+function refreshLedger() {
+  if (sampleMode) return
+  return fetch('/api/ledger').then(responseJSON).then(renderLedger).catch(error => feedback(error.message, true))
+}
+
+function highlightQuote(quote) {
+  document.querySelectorAll('#transcript .line').forEach(line => {
+    const match = line.textContent.toLowerCase().includes(quote.toLowerCase())
+    line.classList.toggle('highlight', match)
+    if (match) line.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  })
+}
+
+// ---------- note export ----------
+
 function downloadText(text, filename) {
   const url = URL.createObjectURL(new Blob([text], { type: 'text/markdown;charset=utf-8' }))
   const link = el('a')
@@ -71,140 +256,32 @@ async function downloadNote(id, company) {
     feedback('Follow-up note downloaded.')
   } catch (error) { feedback(error.message, true) }
 }
-function refreshLedger() {
-  if (sampleMode) return
-  return fetch('/api/ledger').then(responseJSON).then(renderLedger).catch(error => feedback(error.message, true))
-}
-function renderLedger(ledger) {
-  if (!sampleMode) lastLedger = ledger
-  const body = $('ledger-body')
-  body.replaceChildren()
-  const ids = Object.keys(ledger.sessions || {})
-  const current = currentSessionId(ledger)
-  const session = ledger.sessions[current]
-  if (!session) {
-    const empty = el('div', 'evidence-empty')
-    empty.append(el('h3', '', ws?.readyState === 1 ? 'Listening for the first signal.' : 'The signal, and the source.'))
-    empty.append(el('p', 'empty', 'Each finding keeps the words behind it, so you can check the evidence before deciding what to do.'))
-    for (const [num, text] of [['01', 'Exact quotes linked to risk signals'], ['02', 'Checklist triggers that need a closer look'], ['03', 'Agreed actions, with an owner and a deadline']]) {
-      const row = el('div', 'empty-step'); row.append(el('span', '', num), el('div', '', text)); empty.append(row)
-    }
-    body.append(empty); hideBanner(); return
-  }
-  if (sampleMode) body.append(el('div', 'sample-note', 'FICTIONAL SAMPLE · Illustrative timing · Not a live AI result'))
-  else {
-    const picker = el('label', 'session-picker', 'Debrief')
-    const select = el('select'); select.setAttribute('aria-label', 'Choose a debrief')
-    for (const id of ids.sort((a, b) => (ledger.sessions[b].started_at || '').localeCompare(ledger.sessions[a].started_at || ''))) {
-      const entry = ledger.sessions[id]
-      const option = el('option', '', `${entry.company || 'Unassigned company'} · ${(entry.started_at || '').slice(0, 16).replace('T', ' ')} · ${id.slice(-6)}`)
-      option.value = id; option.selected = id === current; select.append(option)
-    }
-    select.disabled = ws?.readyState === 1
-    select.onchange = () => { selectedSession = select.value; renderLedger(lastLedger) }
-    picker.append(select); body.append(picker)
-  }
-  const events = session.events || []
-  const evidence = events.filter(e => e.tool === 'log_evidence')
-  const actions = events.filter(e => e.tool === 'add_action_item')
-  const escalations = evidence.filter(e => e.escalation)
-  const summary = el('div', 'summary-grid')
-  for (const [n, label] of [[evidence.length, 'Signals captured'], [escalations.length, 'Review flags'], [actions.length, 'Agreed actions']]) {
-    const card = el('div'); card.append(el('strong', '', n), el('span', '', label)); summary.append(card)
-  }
-  body.append(summary)
-  for (const event of [...evidence, ...actions]) {
-    const row = el('article', 'ledger-event' + (event.escalation ? ' flagged' : ''))
-    const meta = el('div', 'meta')
-    meta.append(badge(event.tool === 'add_action_item' ? 'Agreed action' : DIMENSION_LABELS[event.dimension] || 'Evidence'))
-    if (event.escalation) meta.append(badge('Review needed', true))
-    const time = el('span', 'evidence-time', stamp(event.at_seconds))
-    time.title = sampleMode ? 'Illustrative timestamp' : 'Time recorded in the live session, not a word-aligned audio citation'
-    meta.append(time); row.append(meta)
-    if (event.tool === 'log_evidence') {
-      row.append(el('div', 'signal', event.signal))
-      const quote = el(sampleMode ? 'button' : 'div', sampleMode ? 'quote quote-button' : 'quote', '“' + event.quote + '”')
-      if (sampleMode) { quote.title = 'Locate this quote in the sample conversation'; quote.onclick = () => highlightQuote(event.quote) }
-      row.append(quote)
-    } else {
-      row.append(el('div', 'signal', event.task), el('div', 'action-meta', `${event.owner} · Due ${event.deadline}`))
-    }
-    body.append(row)
-  }
-  const bar = el('div', 'note-bar')
-  const download = el('button', '', 'Download follow-up note ↓')
-  download.onclick = () => downloadNote(current, session.company)
-  bar.append(download)
-  if (actions.length && !sampleMode && session.company) {
-    const save = el('button', 'secondary', 'Save for next debrief')
-    save.disabled = ws?.readyState === 1
-    save.title = save.disabled ? 'End the debrief before saving its agreed actions' : 'Carry agreed actions into the next call for this company'
-    save.onclick = async () => {
-      save.disabled = true
-      try {
-        const result = await fetch('/api/history', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({session_id: current, company: session.company}) }).then(responseJSON)
-        $('company').value = session.company
-        feedback(`${result.commitments} follow-up(s) saved for ${session.company}. Start the next inline debrief with this company to check them. These are recorded tasks, not scheduled notifications.`)
-        refreshCommitments()
-      } catch(error) { feedback(error.message, true) }
-      finally { save.disabled = false }
-    }
-    bar.append(save)
-  }
-  body.append(bar)
-  if (escalations.length) showBanner(escalations.map(e => e.signal))
-  else hideBanner()
-}
-function showBanner(signals) {
-  $('escalation-text').textContent = `${signals.length} checklist trigger${signals.length === 1 ? '' : 's'} to verify. Review the quotes before escalating.`
-  $('escalation-banner').hidden = false
-}
-function hideBanner() { $('escalation-banner').hidden = true }
-function refreshCommitments() {
-  if (sampleMode) return renderCommitments({ company:'GreenLeaf', last_debrief_at:'2026-08-28', commitments:[{ task:'Confirm who is covering finance after the CFO departure', owner:'Alex', deadline:'This debrief' }] })
-  const company = $('company').value.trim()
-  if (!company) return renderCommitments({})
-  return fetch('/api/history?company=' + encodeURIComponent(company)).then(responseJSON).then(renderCommitments).catch(error => feedback(error.message, true))
-}
-function renderCommitments(value) {
-  const body = $('commitments-body'); body.replaceChildren()
-  const commitments = value.commitments || []
-  if (sampleMode) body.append(el('div', 'sample-note', 'FICTIONAL PREVIOUS DEBRIEF · Shows how a commitment check works'))
-  if (!commitments.length) {
-    body.append(el('div', 'evidence-empty', 'No saved follow-ups for this company. After a debrief, save its agreed actions here. Your next inline call for the same company opens by checking them.'))
-    return
-  }
-  body.append(el('div', 'commitments-head', `${value.company} · Previous debrief ${(value.last_debrief_at || '').slice(0,10)}`))
-  for (const c of commitments) {
-    const card = el('div', 'commitment')
-    card.append(el('div', 'commitment-task', c.task), el('div', 'commitment-meta', `${c.owner} · Due ${c.deadline}`))
-    body.append(card)
-  }
-  body.append(el('p','empty', 'Recorded follow-ups. No email or calendar reminders are sent.'))
-}
-function highlightQuote(quote) {
-  document.querySelectorAll('#transcript .line').forEach(line => {
-    const match = line.textContent.toLowerCase().includes(quote.toLowerCase())
-    line.classList.toggle('highlight', match)
-    if (match) line.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-  })
-}
+
+// ---------- the sample walkthrough ----------
+
 function exitSample() {
   if (!sampleMode) return
-  sampleMode = false; $('company').value = companyBeforeSample
-  $('sample-btn').textContent = 'Explore a sample debrief ↗'
-  $('conversation-label').textContent = 'LIVE DEBRIEF'
+  sampleMode = false
+  document.body.classList.remove('sampling')
+  $('company').value = companyBeforeSample
+  $('sample-btn').textContent = 'Watch a sample ↗'
+  $('live-hint').textContent = 'Evidence is filed to the note on the right as you speak →'
+  resetTranscript()
+  feedback(''); renderLedger(lastLedger); refreshPrev()
+}
+function resetTranscript() {
   $('transcript').replaceChildren(el('div', 'empty', 'Ready for a new debrief. Tell your partner what happened on the call.'))
-  feedback(''); renderLedger(lastLedger); refreshCommitments()
 }
 $('sample-btn').onclick = () => {
   if (sampleMode) { exitSample(); return }
   if (ws?.readyState <= 1) { feedback('End the current debrief before opening the sample.', true); return }
   companyBeforeSample = $('company').value
-  sampleMode = true; $('company').value = 'GreenLeaf'
-  $('sample-btn').textContent = 'Close sample debrief ×'
-  $('conversation-label').textContent = 'FICTIONAL WALKTHROUGH'
-  $('transcript').replaceChildren(el('div', 'sample-note', 'ILLUSTRATIVE CONVERSATION · Click an evidence quote to locate it here'))
+  sampleMode = true
+  document.body.classList.add('sampling')
+  $('company').value = 'GreenLeaf'
+  $('sample-btn').textContent = 'Close sample ×'
+  $('live-hint').textContent = 'Click a quote in the note to locate it in this conversation.'
+  $('transcript').replaceChildren(el('div', 'sample-note', 'FICTIONAL CONVERSATION · ILLUSTRATIVE TIMING · NOT A LIVE AI RESULT'))
   const lines = [
     ['you', 'The founder seemed upbeat. They have a new office, but our CFO left last month. Nobody has formally taken over finance.'],
     ['partner', 'Who is covering finance, and since when?'],
@@ -216,13 +293,16 @@ $('sample-btn').onclick = () => {
     ['partner', 'The follow-up is recorded for Alex, due next Monday.'],
   ]
   for (const [who, text] of lines) {
-    const row = el('div','line' + (who === 'partner' ? ' agent' : ' sample-user'))
-    row.append(el('span','who',who),el('span','said',text)); $('transcript').append(row)
+    const row = el('div', 'line ' + (who === 'partner' ? 'agent sample-user' : 'sample-user'))
+    row.append(el('span', 'who', who), el('span', 'said', text))
+    $('transcript').append(row)
   }
-  renderLedger({ sessions: { [SAMPLE_ID]: SAMPLE } }); refreshCommitments(); showTab('ledger')
+  renderLedger({ sessions: { [SAMPLE_ID]: SAMPLE } })
   feedback('Sample walkthrough: 3 signals, 2 review flags, 1 explicitly agreed action. Nothing is written to your workspace.')
 }
-$('company').addEventListener('change', () => { if (!sampleMode) refreshCommitments() })
+$('sample-close').onclick = exitSample
+
+// ---------- upload: the recording note ----------
 
 $('analyze-btn').onclick = () => { if (sampleMode) exitSample(); $('file').click() }
 $('file').onchange = async () => {
@@ -234,57 +314,64 @@ $('file').onchange = async () => {
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), 15 * 60 * 1000)
   try {
-    const data = await fetch('/api/upload', { method:'POST', headers:{'X-Filename':encodeURIComponent(file.name)}, body:file, signal:controller.signal }).then(responseJSON)
-    offlineData = { ...data, filename:file.name }
-    renderOffline(data,file.name)
+    const data = await fetch('/api/upload', { method: 'POST', headers: { 'X-Filename': encodeURIComponent(file.name) }, body: file, signal: controller.signal }).then(responseJSON)
+    renderOffline(data, file.name)
     feedback('Analysis ready. Review the candidates, then download the recording note.')
-  } catch(error) { renderOfflineError(error.name === 'AbortError' ? 'The request timed out. Try a shorter recording.' : error.message) }
-  finally { clearTimeout(timeout); button.disabled = false; button.textContent = 'Analyze recording ↑' }
+  } catch (error) { renderOfflineError(error.name === 'AbortError' ? 'The request timed out. Try a shorter recording.' : error.message) }
+  finally { clearTimeout(timeout); button.disabled = false; button.textContent = 'Upload a recording →' }
 }
-$('offline-close').onclick = () => { $('offline-result').hidden = true }
 function renderOfflineError(message) {
-  $('offline-title').textContent = 'Recording analysis'
+  $('offline-status').textContent = 'UPLOADED'
   $('offline-body').replaceChildren(el('p', 'empty', message))
-  $('offline-result').hidden = false; feedback(message,true)
+  $('offline-result').hidden = false; feedback(message, true)
 }
 function renderOffline(data, name) {
-  $('offline-title').textContent = `Recording analysis · ${name}${data.language ? ' · ' + data.language.toUpperCase() : ''}`
+  $('offline-status').textContent = (data.language || '').toUpperCase() || 'UPLOADED'
   const body = $('offline-body'); body.replaceChildren()
   const analysis = data.analysis || {}; const signals = analysis.signals || []; const questions = analysis.questions || []
   body.append(el('div', 'notice', `${analysis.method === 'llm' ? 'AI analysis' : 'Keyword screening'} · ${analysis.notice || 'Verify every candidate against the recording.'}`))
   if (data.cached) body.append(el('p', 'empty', 'Saved transcription reused; analysis rerun.'))
-  body.append(el('h3','',signals.length + ' candidates to verify'))
-  if (!signals.length) body.append(el('p','empty', 'No candidates matched. This does not establish that the company has no risks. Check the transcript for missed context.'))
-  for (const s of signals) {
-    const row = el('div','offline-signal')
-    row.append(badge(DIMENSION_LABELS[s.dimension] || s.dimension), el('div','signal',s.signal),el('div','quote','“' + s.quote + '”'))
-    if (s.escalation) row.append(badge('Potential checklist trigger',true))
-    body.append(row)
-  }
-  if (questions.length) {
-    body.append(el('h3','','Questions for the next conversation'))
-    for (const q of questions) { const row = el('div','offline-question'); row.append(el('span','q','↗'),el('span','',q.question)); body.append(row) }
-  }
-  const details = el('details'); details.append(el('summary','','Read the full transcript'),el('div','offline-transcript',data.text || 'No speech was transcribed.')); body.append(details)
-  const bar = el('div','note-bar'); const download = el('button','','Download recording note ↓')
-  download.onclick = () => {
-    const text = [`# Recording review — ${name}`, '', `Analysis method: ${analysis.method || 'keyword'}`, analysis.notice || '', '', '## Candidates (not final grades)', ...signals.map(s=>`\n- ${s.signal}\n  Quote: “${s.quote}”\n  Checklist review: ${s.escalation ? 'needed' : 'not flagged'}`), '', '## Suggested questions (not agreed actions)', ...questions.map(q=>'- '+q.question), '', '## Transcript',data.text || '', '', 'Generated by Second Listen. Verify quotes against the audio.']
-    downloadText(text.join('\n'),name.replace(/\.[^.]+$/,'')+'-review.md'); feedback('Recording note downloaded.')
-  }
-  bar.append(download); body.append(bar); $('offline-result').hidden = false
-  $('offline-result').scrollIntoView({behavior:'smooth',block:'start'})
-}
-// Keyboard navigation for the tab group.
-document.querySelectorAll('[role="tab"]').forEach((button,index,buttons) => {
-  button.addEventListener('keydown', event => {
-    if (!['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return
-    event.preventDefault()
-    const next = event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length-1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + buttons.length) % buttons.length
-    buttons[next].focus(); buttons[next].click()
+  body.append(el('h3', '', signals.length + ' candidates to verify'))
+  if (!signals.length) body.append(el('p', 'empty', 'No candidates matched. This does not establish that the company has no risks. Check the transcript for missed context.'))
+  signals.forEach((s, i) => {
+    const row = el('div', 'entry' + (s.escalation ? ' review' : ''))
+    row.append(el('span', 'eid', 'R-' + pad(i + 1)))
+    const main = el('div')
+    const meta = el('div', 'entry-meta')
+    meta.append(el('span', 'dim', DIMENSION_LABELS[s.dimension] || s.dimension))
+    if (s.escalation) meta.append(el('span', 'chip', 'Trigger'))
+    main.append(meta, el('p', 'signal', s.signal), el('div', 'quote', '“' + s.quote + '”'))
+    row.append(main); body.append(row)
   })
-})
+  if (questions.length) {
+    body.append(el('h3', '', 'Questions for the next conversation'))
+    for (const q of questions) { const row = el('div', 'q-row'); row.append(el('span', 'q', '↗'), el('span', '', q.question)); body.append(row) }
+  }
+  const details = el('details'); details.append(el('summary', '', 'Read the full transcript'), el('div', 'offline-transcript', data.text || 'No speech was transcribed.')); body.append(details)
+  const bar = el('div', 'note-bar'); const download = el('button', 'export', 'Download recording note ↓')
+  download.type = 'button'
+  download.onclick = () => {
+    const text = [`# Recording review — ${name}`, '', `Analysis method: ${analysis.method || 'keyword'}`, analysis.notice || '', '', '## Candidates (not final grades)', ...signals.map(s => `\n- ${s.signal}\n  Quote: “${s.quote}”\n  Checklist review: ${s.escalation ? 'needed' : 'not flagged'}`), '', '## Suggested questions (not agreed actions)', ...questions.map(q => '- ' + q.question), '', '## Transcript', data.text || '', '', 'Generated by Second Listen. Verify quotes against the audio.']
+    downloadText(text.join('\n'), name.replace(/\.[^.]+$/, '') + '-review.md'); feedback('Recording note downloaded.')
+  }
+  bar.append(download); body.append(bar)
+  $('offline-result').hidden = false
+  $('offline-result').scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
+// ---------- wiring ----------
+
+$('offline-close').onclick = () => { $('offline-result').hidden = true }
+
+$('btn-stop').onclick = () => stop()
+$('company').addEventListener('change', () => { if (!sampleMode) refreshPrev() })
+$('debug-toggle').onclick = () => { $('debug').hidden = !$('debug').hidden }
+$('debug-close').onclick = () => { $('debug').hidden = true }
+
 if (AGENT.preview) {
   $('preview-notice').hidden = false
   $('btn').disabled = true; $('analyze-btn').disabled = true; $('mic').disabled = true
 }
-showTab('ledger')
+
+refreshLedger()
+refreshPrev()
