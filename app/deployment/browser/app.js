@@ -167,6 +167,8 @@ const blobUrl = (code) =>
 let ws, captureCtx, playbackCtx, playback, mic, callStart, timer
 let callGeneration = 0, connectionDeadline
 let sessionId = null
+let endRequested = false
+let serverEnded = false
 // Client-side tools: hold results until the turn is idle (reply.done).
 let lastEvent = null
 const pendingTools = []
@@ -461,6 +463,8 @@ async function start() {
   // and prepare the prior commitments for this next conversation.
   if (typeof prepareDebriefView === 'function') prepareDebriefView()
   const generation = ++callGeneration
+  endRequested = false
+  serverEnded = false
   sessionId = null; selectedSession = null; pendingTools.length = 0; lastEvent = null
   printedReply = liveReply = null
   $('company').disabled = true
@@ -724,6 +728,7 @@ async function start() {
 
         case 'session.ended':
           logEvent('down', msg.type)
+          serverEnded = true
           requestArchive()
           socket.close()
           break
@@ -741,9 +746,20 @@ async function start() {
 
     ws.onclose = () => {
       if (generation !== callGeneration) return
+      const endedNormally = endRequested || serverEnded
+      const endedSessionId = sessionId
+      const endedCompany = liveCompany
       requestArchive()
       if (!$('status').classList.contains('error')) setStatus('idle')
-      reset(); refreshLedger()
+      reset()
+      // Pull the final ledger first, then carry confirmed actions forward. Do
+      // not wait for archive completion or report repaint before saving.
+      refreshLedger(false).then(() => {
+        const carry = endedNormally && typeof autoSaveFollowUps === 'function'
+          ? autoSaveFollowUps(endedSessionId, endedCompany)
+          : Promise.resolve()
+        return Promise.resolve(carry).finally(() => renderLedger(lastLedger))
+      })
     }
     ws.onerror = () => {
       if (generation !== callGeneration) return
@@ -758,6 +774,7 @@ async function start() {
 function stop() {
   // Close cleanly so the session record ends, falling back to the socket.
   if (ws?.readyState === 1) {
+    endRequested = true
     ws.send(JSON.stringify({ type: 'session.end' }))
     logEvent('up', 'session.end')
     const socket = ws

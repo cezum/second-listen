@@ -6,6 +6,7 @@ let sampleMode = false
 let liveCompany = ''
 let companyBeforeSample = ''
 let historyReadyForNextDebrief = true
+const autoSavedFollowUps = new Set()
 const seenEntries = new Set()
 const SAMPLE_ID = 'sample-greenleaf'
 const SAMPLE = {
@@ -113,7 +114,9 @@ function showRecordingView(open, render = true) {
     ? 'SECOND LISTEN — RECORDING REVIEW'
     : 'SECOND LISTEN — POST-INVESTMENT VISIT NOTES')
   const source = $('recording-source') || $('offline-status')
-  if ($('lh-status')) $('lh-status').hidden = recording && source !== $('lh-status')
+  // The summary row already carries the review count. Keep the letterhead
+  // quiet and reserve its right side for the shared back-to-workspace action.
+  if ($('lh-status')) $('lh-status').hidden = true
   if (source && source.id === 'offline-status') source.hidden = !recording
   if ($('sheet')) $('sheet').setAttribute('aria-label', recording ? 'Recording analysis' : 'Post-investment visit notes')
   if (!recording && render) renderLedger(lastLedger)
@@ -214,6 +217,8 @@ function commitmentRow(c) {
 function renderLedger(ledger) {
   if (!sampleMode) lastLedger = ledger
   if (document.body.classList.contains('recording-open')) return
+  const close = recordingElement('recording-close', 'offline-close')
+  if (close) close.hidden = true
   const ids = Object.keys(ledger.sessions || {})
   const current = currentSessionId(ledger)
   const session = ledger.sessions[current]
@@ -229,6 +234,9 @@ function renderLedger(ledger) {
 
   $('note-empty').hidden = true
   $('note-filled').hidden = false
+  // A completed debrief can return to the same blank workspace as a
+  // recording review. Never expose it while the live session is active.
+  if (close) close.hidden = ws?.readyState === 1
   // Saved follow-ups belong to the next debrief's context, not this
   // completed report.
   $('sec-prev').style.display = 'none'
@@ -283,24 +291,6 @@ function renderLedger(ledger) {
 
   $('note-download').onclick = () => downloadNote(current, session.company)
 
-  const save = $('note-save')
-  if (actions.length && !sampleMode && session.company) {
-    save.hidden = false
-    save.disabled = ws?.readyState === 1
-    save.title = save.disabled ? 'End the debrief before saving its agreed actions' : 'Carry agreed actions into the next call for this company'
-    save.onclick = async () => {
-      save.disabled = true
-      try {
-        const result = await fetch('/api/history', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session_id: current, company: session.company }) }).then(responseJSON)
-        $('company').value = session.company
-        feedback(`${result.commitments} follow-up(s) saved for ${session.company}. Start the next inline debrief with this company to check them. These are recorded tasks, not scheduled notifications.`)
-        historyReadyForNextDebrief = false
-        refreshPrev()
-      } catch (error) { feedback(error.message, true) }
-      finally { save.disabled = ws?.readyState === 1 }
-    }
-  } else save.hidden = true
-
   refreshPrev()
 }
 
@@ -336,7 +326,30 @@ function refreshLedger(render = true) {
   return fetch('/api/ledger').then(responseJSON).then(ledger => {
     lastLedger = ledger
     if (render) renderLedger(ledger)
+    return ledger
   }).catch(error => feedback(error.message, true))
+}
+
+async function autoSaveFollowUps(sessionId, company) {
+  if (!sessionId || !company || autoSavedFollowUps.has(sessionId)) return
+  const session = lastLedger.sessions?.[sessionId]
+  const hasActions = session?.events?.some(event => event.tool === 'add_action_item')
+  if (!hasActions) return
+  autoSavedFollowUps.add(sessionId)
+  try {
+    const result = await fetch('/api/history', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: sessionId, company }),
+    }).then(responseJSON)
+    $('company').value = company
+    historyReadyForNextDebrief = false
+    refreshPrev()
+    feedback(`${result.commitments} follow-up(s) will be checked automatically next time you review ${company}.`)
+  } catch (error) {
+    autoSavedFollowUps.delete(sessionId)
+    feedback('Follow-ups could not be carried forward automatically. ' + error.message, true)
+  }
 }
 
 function highlightQuote(quote) {

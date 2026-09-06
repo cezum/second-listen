@@ -63,35 +63,38 @@ def _commitment_greeting(history: dict) -> Optional[str]:
     if not commitments:
         return None
     company = history.get("company", "the company")
-    items = []
-    for i, commit in enumerate(commitments, 1):
-        task = commit.get("task", "")
-        owner = commit.get("owner", "")
-        deadline = commit.get("deadline", "")
-        tail = ""
-        if owner:
-            tail = f" — {owner}"
-            if deadline:
-                tail += f", due {deadline}"
-        items.append(f"{i}. {task}{tail}")
-    body = "\n".join(items)
-    plural = "s" if len(commitments) != 1 else ""
+    first = commitments[0]
+    task = first.get("task", "")
+    owner = first.get("owner", "")
+    deadline = first.get("deadline", "")
+    tail = ""
+    if owner:
+        tail = f" — {owner}"
+        if deadline:
+            tail += f", due {deadline}"
     return (
-        f"Welcome back. Last time we debriefed {company}, we left "
-        f"{len(commitments)} commitment{plural} open:\n{body}\n"
-        "Let's check each one before anything new. How did the first one go?"
+        f"Welcome back. Before we cover anything new from {company}, "
+        "let's close one prior follow-up at a time. "
+        f"Let's start here: {task}{tail}. What is the current status?"
     )
 
 
 def _commitment_prompt() -> str:
     return (
-        "This may be a repeat debrief for the same company. If the greeting "
-        "lists commitments from a previous session, your first task is to check "
-        "them one at a time: ask what has happened since, whether each is done, "
-        "and whether anything about it is a new risk signal. Only after the "
-        "commitments are covered should you move on to listening for new "
-        "signals. If a commitment is done, acknowledge it and move to the next "
-        "one; log evidence only when its outcome is itself a risk signal."
+        "This is a repeat debrief for the same company. Prior follow-ups are "
+        "working context, not a script to read aloud. Follow this exact sequence: "
+        "(1) ask about only the first prior follow-up; (2) wait for the investor's "
+        "answer; (3) ask one short clarification only if its status is still "
+        "unclear; (4) once it is resolved, still open, or explicitly unclear, "
+        "acknowledge it briefly and move to the next prior follow-up. Never list, "
+        "preview, or ask multiple prior follow-ups in one turn. Keep going one at "
+        "a time until every prior follow-up has a clear status. If one remains "
+        "open, offer a new reminder only as a question and wait for explicit yes "
+        "before calling add_action_item. Only after all prior follow-ups have a "
+        "status should you ask what else changed in this visit and investigate "
+        "new signals. Do not re-ask old signals unless the investor reports a "
+        "new change or risk. Log evidence only when the outcome is itself a risk "
+        "signal."
     )
 
 
