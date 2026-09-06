@@ -26,6 +26,7 @@ Environment:
 
 import json
 import os
+import re
 import sys
 from pathlib import Path
 from typing import Any, Optional
@@ -35,6 +36,33 @@ from lib import atomic_write_text
 ROOT = Path(__file__).resolve().parent
 LEDGER = ROOT / "data" / "ledger.json"
 HISTORY_DIR = ROOT / "data" / "history"
+_WEAK_ACTION_VALUES = {
+    "", "tbd", "unknown", "unspecified", "not specified",
+    "not set", "as soon as possible", "to be confirmed",
+}
+
+
+def normalize_action_task(task: str) -> str:
+    """Return a stable comparison key for one action's task text."""
+    return re.sub(r"[^a-z0-9\u4e00-\u9fff]+", "", (task or "").casefold())
+
+
+def _action_value_strength(value: str) -> int:
+    normalized = " ".join((value or "").casefold().split())
+    return 0 if normalized in _WEAK_ACTION_VALUES else 1
+
+
+def merge_action_fields(existing: dict, incoming: dict) -> bool:
+    """Merge a repeated action into the existing record, without appending it."""
+    changed = False
+    for field in ("owner", "deadline"):
+        old = str(existing.get(field) or "").strip()
+        new = str(incoming.get(field) or "").strip()
+        if new and (_action_value_strength(new) > _action_value_strength(old)
+                    or (_action_value_strength(new) and old != new)):
+            existing[field] = new
+            changed = True
+    return changed
 
 
 def load_ledger() -> dict:
@@ -83,11 +111,18 @@ def build_history(session: dict, company: str) -> dict:
     for event in session.get("events") or []:
         tool = event.get("tool")
         if tool == "add_action_item":
-            commitments.append({
+            incoming = {
                 "task": event.get("task", ""),
                 "owner": event.get("owner", ""),
                 "deadline": event.get("deadline", ""),
-            })
+            }
+            key = normalize_action_task(incoming["task"])
+            existing = next((item for item in commitments
+                             if normalize_action_task(item["task"]) == key), None)
+            if existing:
+                merge_action_fields(existing, incoming)
+            else:
+                commitments.append(incoming)
         elif tool == "log_evidence":
             signal = (event.get("signal") or "").strip()
             if signal and signal not in signals:

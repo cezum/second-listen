@@ -13,7 +13,8 @@ and only used for the title and the download filename.
 
 from typing import Optional
 
-from history_from_ledger import load_ledger, pick_session, slugify
+from history_from_ledger import (load_ledger, merge_action_fields,
+                                  normalize_action_task, pick_session, slugify)
 
 
 def _stamp(seconds) -> str:
@@ -21,6 +22,28 @@ def _stamp(seconds) -> str:
         return "--:--"
     total = max(0, int(float(seconds)))
     return f"{total // 60:02d}:{total % 60:02d}"
+
+
+def _unique_actions(events: list[dict]) -> list[dict]:
+    actions: list[dict] = []
+    for event in events:
+        if event.get("tool") != "add_action_item":
+            continue
+        incoming = {
+            "tool": "add_action_item",
+            "task": event.get("task", ""),
+            "owner": event.get("owner", ""),
+            "deadline": event.get("deadline", ""),
+            "at_seconds": event.get("at_seconds"),
+        }
+        key = normalize_action_task(incoming["task"])
+        existing = next((item for item in actions
+                         if normalize_action_task(item["task"]) == key), None)
+        if existing:
+            merge_action_fields(existing, incoming)
+        else:
+            actions.append(incoming)
+    return actions
 
 
 def build_note(session_id: str, session: dict, company: str = "") -> str:
@@ -31,7 +54,7 @@ def build_note(session_id: str, session: dict, company: str = "") -> str:
         key=lambda e: (e.get("at_seconds") is None, e.get("at_seconds") or 0),
     )
     evidence = [e for e in events if e.get("tool") == "log_evidence"]
-    actions = [e for e in events if e.get("tool") == "add_action_item"]
+    actions = _unique_actions(events)
     escalated = [e for e in evidence if e.get("escalation")]
 
     out = [

@@ -204,6 +204,26 @@ function actionRow(event, eid, fresh) {
   return row
 }
 
+const WEAK_ACTION_VALUES = new Set(['', 'tbd', 'unknown', 'unspecified', 'not specified', 'not set', 'as soon as possible', 'to be confirmed'])
+function normalizeActionTask(task) { return String(task || '').toLowerCase().replace(/[^a-z0-9\u4e00-\u9fff]+/g, '') }
+function actionValueStrength(value) { return WEAK_ACTION_VALUES.has(String(value || '').trim().toLowerCase().replace(/\s+/g, ' ')) ? 0 : 1 }
+function mergeActionFields(existing, incoming) {
+  for (const field of ['owner', 'deadline']) {
+    const oldValue = String(existing[field] || '').trim(), newValue = String(incoming[field] || '').trim()
+    if (newValue && (actionValueStrength(newValue) > actionValueStrength(oldValue) || (actionValueStrength(newValue) && oldValue !== newValue))) existing[field] = newValue
+  }
+  return existing
+}
+function dedupeActions(events) {
+  const actions = []
+  for (const event of events.filter(e => e.tool === 'add_action_item')) {
+    const existing = actions.find(item => normalizeActionTask(item.task) === normalizeActionTask(event.task))
+    if (existing) mergeActionFields(existing, event)
+    else actions.push({ ...event })
+  }
+  return actions
+}
+
 function commitmentRow(c) {
   const row = el('label', 'commit')
   const box = document.createElement('input')
@@ -244,7 +264,7 @@ function renderLedger(ledger) {
 
   const events = [...(session.events || [])].sort((a, b) => (a.at_seconds ?? 0) - (b.at_seconds ?? 0))
   const evidence = events.filter(e => e.tool === 'log_evidence')
-  const actions = events.filter(e => e.tool === 'add_action_item')
+  const actions = dedupeActions(events)
   const escalations = evidence.filter(e => e.escalation)
 
   $('note-company').textContent = session.company || 'Unassigned company'

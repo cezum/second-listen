@@ -28,7 +28,7 @@ from archive import DEFAULT_TRIALS_DIR, archive_async
 import transcribe
 import analyze
 import history
-from history_from_ledger import build_history, slugify
+from history_from_ledger import build_history, merge_action_fields, normalize_action_task, slugify
 from note import build_note
 
 LEDGER = HERE.parents[1] / 'data' / 'ledger.json'
@@ -355,14 +355,26 @@ class Handler(BaseHTTPRequestHandler):
                     if entry.get('company') and slugify(entry['company']) != slugify(company):
                         raise ValueError('Company cannot change during a session')
                     entry.setdefault('company', company)
-                    duplicate = any(
-                        (event.get('call_id') and e.get('call_id') == event['call_id'])
-                        or (event['tool'] == 'add_action_item' and all(e.get(k) == event.get(k) for k in ('tool', 'task', 'owner', 'deadline')))
-                        for e in entry['events'])
+                    duplicate = False
+                    changed = False
+                    for existing in entry['events']:
+                        same_call = event.get('call_id') and existing.get('call_id') == event['call_id']
+                        same_action = (
+                            event['tool'] == 'add_action_item'
+                            and existing.get('tool') == 'add_action_item'
+                            and normalize_action_task(existing.get('task', ''))
+                            == normalize_action_task(event.get('task', ''))
+                        )
+                        if same_call or same_action:
+                            duplicate = True
+                            if same_action:
+                                changed = merge_action_fields(existing, event)
+                            break
                     if not duplicate:
                         entry['events'].append(event)
+                    if not duplicate or changed:
                         write_ledger(ledger)
-                self._json(200, {'ok': True, 'duplicate': duplicate, 'event_count': len(entry['events'])})
+                self._json(200, {'ok': True, 'duplicate': duplicate, 'updated': changed, 'event_count': len(entry['events'])})
             else:
                 self._json(404, {'error': 'Not found'})
         except transcribe.TranscribeError as err:
