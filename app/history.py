@@ -7,9 +7,9 @@ so the same stored agent picks up the check on the next call.
 
 The summary lives in one JSON file per company under data/history/:
 
-    data/history/greenleaf.json
+    data/history/project-8.json
     {
-      "company": "GreenLeaf",
+      "company": "Project 8",
       "last_debrief_at": "2026-09-01T10:00:00Z",
       "commitments": [
         {"task": "submit written approval for the reallocated grant",
@@ -20,7 +20,7 @@ The summary lives in one JSON file per company under data/history/:
 
 With no history file present, apply_history() is a no-op, so the mechanism
 ships inert and activates the moment a file appears. Pick the file with
-HISTORY_COMPANY=greenleaf, otherwise the most recently modified one is used.
+HISTORY_COMPANY=project-8, otherwise the most recently modified one is used.
 """
 
 import json

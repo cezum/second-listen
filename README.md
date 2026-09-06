@@ -51,7 +51,7 @@ A second debrief for the same company opens with a commitment check. The previou
 
 ```json
 {
-  "company": "GreenLeaf",
+  "company": "Project 8",
   "last_debrief_at": "2026-09-01T10:00:00Z",
   "commitments": [
     { "task": "submit written approval for the reallocated grant",
@@ -61,13 +61,13 @@ A second debrief for the same company opens with a commitment check. The previou
 }
 ```
 
-`commitments` drive the opening check (owner + deadline included); `signals` stop the agent from re-asking what was already recorded. Publish with `HISTORY_COMPANY=greenleaf python publish.py`, or let it pick the most recently modified file. With no file there is no check — the mechanism is inert until a file appears.
+`commitments` drive the opening check (owner + deadline included); `signals` stop the agent from re-asking what was already recorded. Publish with `HISTORY_COMPANY=project-8 python publish.py`, or let it pick the most recently modified file. With no file there is no check — the mechanism is inert until a file appears.
 
 After a live debrief, build the file from the session's own tool calls instead of writing it by hand:
 
 ```sh
-COMPANY=greenleaf python history_from_ledger.py   # in app/
-COMPANY=greenleaf python publish.py               # the check is injected at publish time
+COMPANY=project-8 python history_from_ledger.py   # in app/
+COMPANY=project-8 python publish.py               # the check is injected at publish time
 ```
 
 It repacks the ledger's `add_action_item` calls into `commitments` and its `log_evidence` signals into `signals`, reading the most recent session unless `SESSION=<id>` says otherwise. `FORCE=1` overwrites, `DRY_RUN=1` prints instead of writing.

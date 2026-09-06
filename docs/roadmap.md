@@ -21,7 +21,7 @@ from `app/data/history/<company>.json` at publish time — no vector store, no D
 
 ```json
 {
-  "company": "GreenLeaf",
+  "company": "Project 8",
   "last_debrief_at": "2026-09-01T10:00:00Z",
   "commitments": [
     { "task": "submit written approval for the reallocated grant",

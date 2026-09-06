@@ -8,11 +8,11 @@ let companyBeforeSample = ''
 let historyReadyForNextDebrief = true
 const autoSavedFollowUps = new Set()
 const seenEntries = new Set()
-const SAMPLE_ID = 'sample-greenleaf'
+const SAMPLE_ID = 'sample-project-8'
 let sampleRun = 0
 let sampleTimer = null
 const SAMPLE = {
-  company: 'GreenLeaf', started_at: '2026-09-05T09:00:00Z', sample: true,
+  company: 'Project 8', started_at: '2026-09-05T09:00:00Z', sample: true,
   events: [
     { tool: 'log_evidence', at_seconds: 12, dimension: 'team_integrity', quote: 'our CFO left last month', signal: 'Finance leadership changed; interim coverage is unclear.', escalation: true },
     { tool: 'log_evidence', at_seconds: 24, dimension: 'financial_health', quote: 'moved some of the R&D grant to cover payroll', signal: 'Grant spending may fall outside the approved purpose.', escalation: true },
@@ -21,7 +21,7 @@ const SAMPLE = {
   ],
 }
 const SAMPLE_HISTORY = {
-  company: 'GreenLeaf', commitments: [],
+  company: 'Project 8', commitments: [],
 }
 const DIMENSION_LABELS = { operations: 'Operations', exit_potential: 'Exit outlook', self_funding: 'Cash generation', team_integrity: 'Team', financial_health: 'Financial health' }
 
@@ -379,7 +379,7 @@ async function downloadNote(id, company) {
     if (sampleMode) {
       downloadText('# Second Listen — fictional sample\n\nIllustrative walkthrough; not a live AI result.\n\n' + SAMPLE.events.map(e => e.tool === 'log_evidence'
         ? `- [${stamp(e.at_seconds)} illustrative] ${e.signal}\n  Quote: “${e.quote}”`
-        : `- [ ] ${e.task} — ${e.owner}, ${e.deadline}`).join('\n\n') + '\n\nFlags require human review. Actions are recorded tasks; no notifications are scheduled.\n', 'greenleaf-sample.md')
+        : `- [ ] ${e.task} — ${e.owner}, ${e.deadline}`).join('\n\n') + '\n\nFlags require human review. Actions are recorded tasks; no notifications are scheduled.\n', 'project-8-sample.md')
     } else {
       const res = await fetch('/api/note?session=' + encodeURIComponent(id) + '&company=' + encodeURIComponent(company || ''))
       if (!res.ok) throw new Error('Could not export this debrief. Please retry.')
@@ -476,10 +476,10 @@ $('sample-btn').onclick = () => {
   companyBeforeSample = $('company').value
   sampleMode = true
   document.body.classList.add('sampling')
-  $('company').value = 'GreenLeaf'
+  $('company').value = 'Project 8'
   $('sample-btn').textContent = 'Close sample ×'
   $('live-hint').textContent = 'Click a quote in the note to locate it in this conversation.'
-  $('transcript').replaceChildren(el('div', 'sample-note', 'FICTIONAL CONVERSATION · ILLUSTRATIVE TIMING · NOT A LIVE AI RESULT'))
+  $('transcript').replaceChildren(el('div', 'sample-note', 'FICTIONAL COMPANY · PROJECT 8 · ILLUSTRATIVE TIMING · NOT A LIVE AI RESULT'))
   sampleRun++
   renderLedger({ sessions: {} })
   feedback('Sample walkthrough starting. Listen as the note builds beside the conversation.')

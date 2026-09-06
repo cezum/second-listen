@@ -15,10 +15,10 @@ wants `commitments` (owner/deadline/task) and `signals` (strings). The agent's
 add_action_item arguments already use the commitment field names, so this is a
 pick-and-repack, not a translation.
 
-    COMPANY=greenleaf python history_from_ledger.py
+    COMPANY=project-8 python history_from_ledger.py
 
 Environment:
-  COMPANY    the company name, also the filename (default: GreenLeaf)
+  COMPANY    the company name, also the filename (default: Project 8)
   SESSION    which ledger session to read (default: the most recent one)
   FORCE=1    overwrite an existing history file
   DRY_RUN=1  print the file instead of writing it
@@ -101,7 +101,7 @@ def build_history(session: dict, company: str) -> dict:
 
 
 def main() -> int:
-    company = os.environ.get("COMPANY", "").strip() or "GreenLeaf"
+    company = os.environ.get("COMPANY", "").strip() or "Project 8"
     want_session = os.environ.get("SESSION", "").strip()
     force = os.environ.get("FORCE") == "1"
     dry_run = os.environ.get("DRY_RUN") == "1"

@@ -167,12 +167,12 @@ through what was left open last time, which is the third line of the
 ### 2.1 Turn Round 1 into a history file
 
 ```sh
-COMPANY=greenleaf python history_from_ledger.py
+COMPANY=project-8 python history_from_ledger.py
 ```
 
 It reads the most recent ledger session, repacks every `add_action_item` into
 `commitments` and every `log_evidence` signal into `signals`, and writes
-`data/history/greenleaf.json`.
+`data/history/project-8.json`.
 
 | Pass | Fail |
 |---|---|
@@ -185,7 +185,7 @@ prints instead of writing.
 ### 2.2 Republish so the greeting picks it up
 
 ```sh
-AGENT=second-listen COMPANY=greenleaf python publish.py
+AGENT=second-listen COMPANY=project-8 python publish.py
 ```
 
 Same reason as above: a bare `python publish.py` would target `minimal` and,
@@ -209,7 +209,7 @@ python -c "from lib import aai,load_env,stored_agent_id; load_env(); print(aai('
 
 Then answer one commitment and confirm the Commitments tab reflects it.
 
-To get back to a clean agent, delete `data/history/greenleaf.json` and publish
+To get back to a clean agent, delete `data/history/project-8.json` and publish
 again.
 
 ---

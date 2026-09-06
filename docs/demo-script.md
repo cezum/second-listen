@@ -1,11 +1,13 @@
 # Demo Script — the 45-second debrief
 
+Project 8 is a fictional portfolio company created for this demonstration.
+
 ## The monologue (investor's input)
 
 Three signals are buried in small talk. A listener hears nothing wrong on the first pass; the agent hears all three.
 
 ```text
-Okay, quick debrief on GreenLeaf. Call with Ben went fine, pretty
+Okay, quick debrief on Project 8. Call with Ben went fine, pretty
 relaxed. Q3 revenue is basically flat, but he's not worried — says the
 enterprise pipeline will close the gap. Oh — and Sarah, the CFO,
 actually left last month. Still interviewing for the replacement, Ben's
