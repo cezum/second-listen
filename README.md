@@ -39,6 +39,8 @@ docs/demo-script.md     the 45-second debrief monologue with buried signals
 docs/demo-script-zh.md  the same monologue in Chinese, for the comparison round
 docs/hackathon-demo-script-2min.md
                         the 2-minute English submission video script
+docs/hackathon-demo-shot-list.md
+                        capture order and final video safety checklist
 docs/roadmap.md         build milestones for the hackathon month
 docs/live-test-checklist.md
                         one boot, three calls: everything that needs a voice,
