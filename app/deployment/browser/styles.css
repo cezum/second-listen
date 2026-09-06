@@ -108,6 +108,7 @@ body.sampling #sample-flag,body.sampling #sample-close{display:inline-flex}
 .line.agent .said{color:var(--ink-2)}
 .line.tool{display:none}
 .line.partial{opacity:.65}
+.line.sample-user{animation:sample-in .35s ease both}
 .line.highlight .said{background:var(--red-soft);border-radius:4px}
 .line.sample-user .said{color:var(--ink)}
 .live-hint{margin:14px 0 0;padding-top:12px;border-top:1px solid var(--line);font-size:11px;color:var(--ink-3)}
@@ -242,6 +243,7 @@ details{margin-top:14px}
 @keyframes blink{50%{opacity:.25}}
 @keyframes pulse{50%{opacity:.4}}
 @keyframes flash{from{background:var(--red-soft)}to{background:transparent}}
+@keyframes sample-in{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 @media(max-width:960px){
   main{padding:0 18px}

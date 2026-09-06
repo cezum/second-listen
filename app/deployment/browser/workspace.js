@@ -9,6 +9,8 @@ let historyReadyForNextDebrief = true
 const autoSavedFollowUps = new Set()
 const seenEntries = new Set()
 const SAMPLE_ID = 'sample-greenleaf'
+let sampleRun = 0
+let sampleTimer = null
 const SAMPLE = {
   company: 'GreenLeaf', started_at: '2026-09-05T09:00:00Z', sample: true,
   events: [
@@ -19,8 +21,7 @@ const SAMPLE = {
   ],
 }
 const SAMPLE_HISTORY = {
-  company: 'GreenLeaf', last_debrief_at: '2026-08-28',
-  commitments: [{ task: 'Confirm who is covering finance after the CFO departure', owner: 'Alex', deadline: 'This debrief' }],
+  company: 'GreenLeaf', commitments: [],
 }
 const DIMENSION_LABELS = { operations: 'Operations', exit_potential: 'Exit outlook', self_funding: 'Cash generation', team_integrity: 'Team', financial_health: 'Financial health' }
 
@@ -304,11 +305,11 @@ function refreshPrev() {
 }
 function renderPrev(value, isSample) {
   const commitments = value.commitments || []
-  const showHistory = isSample || (historyReadyForNextDebrief && commitments.length > 0)
+  const showHistory = commitments.length > 0 && (isSample || historyReadyForNextDebrief)
   // Filled note.
   const list = $('prev-list'); list.replaceChildren()
   $('prev-head').textContent = 'Previous follow-ups' + (value.last_debrief_at ? ' · ' + value.last_debrief_at.slice(0, 10) : '')
-  if (showHistory && isSample) list.append(el('div', 'sample-note', 'FICTIONAL PREVIOUS DEBRIEF · HOW THE COMMITMENT CHECK OPENS A CALL'))
+  if (showHistory && isSample) list.append(el('div', 'sample-note', 'FICTIONAL PREVIOUS REVIEW · HOW THE COMMITMENT CHECK WORKS'))
   if (showHistory && commitments.length) {
     for (const c of commitments) list.append(commitmentRow(c))
     $('sec-prev').style.display = ''
@@ -393,8 +394,13 @@ async function downloadNote(id, company) {
 
 function exitSample() {
   if (!sampleMode) return
+  sampleRun++
+  clearTimeout(sampleTimer)
+  sampleTimer = null
+  window.speechSynthesis?.cancel()
   sampleMode = false
   document.body.classList.remove('sampling')
+  if (typeof setStatus === 'function') setStatus('idle')
   $('company').value = companyBeforeSample
   $('sample-btn').textContent = 'Watch a sample ↗'
   $('live-hint').textContent = 'Evidence is filed to the note on the right as you speak →'
@@ -402,8 +408,63 @@ function exitSample() {
   feedback(''); renderLedger(lastLedger); refreshPrev()
 }
 function resetTranscript() {
-  $('transcript').replaceChildren(el('div', 'empty', 'Ready for a new debrief. Tell your partner what happened on the call.'))
+  $('transcript').replaceChildren(el('div', 'empty', 'Ready for a new debrief. Tell your partner what changed at the latest check-in.'))
 }
+
+const SAMPLE_LINES = [
+  ['you', 'The founder seemed upbeat. They have a new office, but our CFO left last month. Nobody has formally taken over finance.'],
+  ['partner', 'Who is covering finance, and since when?'],
+  ['you', 'I need to check. They also moved some of the R&D grant to cover payroll. Revenue has been flat for two quarters.'],
+  ['partner', 'Was there written approval to use the grant for payroll?'],
+  ['you', "I'm not sure."],
+  ['partner', 'Shall we add a follow-up to request the written approval?'],
+  ['you', 'Yes. Assign it to Alex, due next Monday.'],
+  ['partner', 'The follow-up is recorded for Alex, due next Monday.'],
+]
+
+function renderSampleEvents(count) {
+  renderLedger({ sessions: { [SAMPLE_ID]: { ...SAMPLE, events: SAMPLE.events.slice(0, count) } } })
+}
+
+function appendSampleLine(who, text) {
+  const row = el('div', 'line ' + (who === 'partner' ? 'agent sample-user' : 'sample-user'))
+  row.append(el('span', 'who', who), el('span', 'said', text))
+  $('transcript').append(row)
+  $('transcript').scrollTop = $('transcript').scrollHeight
+}
+
+function sampleSpeech(text, who, done) {
+  const finish = () => { sampleTimer = setTimeout(done, 420) }
+  if (!window.speechSynthesis) {
+    sampleTimer = setTimeout(done, Math.max(850, text.length * 32))
+    return
+  }
+  const utterance = new SpeechSynthesisUtterance(text)
+  utterance.lang = 'en-US'
+  utterance.rate = who === 'partner' ? 0.98 : 0.92
+  utterance.pitch = who === 'partner' ? 1.06 : 0.96
+  utterance.onend = finish
+  utterance.onerror = finish
+  window.speechSynthesis.speak(utterance)
+}
+
+function playSampleLine(index, run) {
+  if (!sampleMode || run !== sampleRun || index >= SAMPLE_LINES.length) {
+    if (sampleMode && run === sampleRun) {
+      if (typeof setStatus === 'function') setStatus('idle', 'Sample complete')
+      feedback('Sample complete. Nothing was written to your workspace.')
+    }
+    return
+  }
+  const [who, text] = SAMPLE_LINES[index]
+  appendSampleLine(who, text)
+  if (index === 0) renderSampleEvents(1)
+  if (index === 2) renderSampleEvents(3)
+  if (index === 6) renderSampleEvents(4)
+  if (typeof setStatus === 'function') setStatus(who === 'partner' ? 'speaking' : 'listening', who === 'partner' ? 'Sample partner is speaking' : 'Sample investor is speaking')
+  sampleSpeech(text, who, () => playSampleLine(index + 1, run))
+}
+
 $('sample-btn').onclick = () => {
   if (sampleMode) { exitSample(); return }
   if (ws?.readyState <= 1) { feedback('End the current debrief before opening the sample.', true); return }
@@ -414,23 +475,10 @@ $('sample-btn').onclick = () => {
   $('sample-btn').textContent = 'Close sample ×'
   $('live-hint').textContent = 'Click a quote in the note to locate it in this conversation.'
   $('transcript').replaceChildren(el('div', 'sample-note', 'FICTIONAL CONVERSATION · ILLUSTRATIVE TIMING · NOT A LIVE AI RESULT'))
-  const lines = [
-    ['you', 'The founder seemed upbeat. They have a new office, but our CFO left last month. Nobody has formally taken over finance.'],
-    ['partner', 'Who is covering finance, and since when?'],
-    ['you', 'I need to check. They also moved some of the R&D grant to cover payroll. Revenue has been flat for two quarters.'],
-    ['partner', 'Was there written approval to use the grant for payroll?'],
-    ['you', "I'm not sure."],
-    ['partner', 'Shall we add a follow-up to request the written approval?'],
-    ['you', 'Yes. Assign it to Alex, due next Monday.'],
-    ['partner', 'The follow-up is recorded for Alex, due next Monday.'],
-  ]
-  for (const [who, text] of lines) {
-    const row = el('div', 'line ' + (who === 'partner' ? 'agent sample-user' : 'sample-user'))
-    row.append(el('span', 'who', who), el('span', 'said', text))
-    $('transcript').append(row)
-  }
-  renderLedger({ sessions: { [SAMPLE_ID]: SAMPLE } })
-  feedback('Sample walkthrough: 3 signals, 2 review flags, 1 explicitly agreed action. Nothing is written to your workspace.')
+  sampleRun++
+  renderLedger({ sessions: {} })
+  feedback('Sample walkthrough starting. Listen as the note builds beside the conversation.')
+  playSampleLine(0, sampleRun)
 }
 $('sample-close').onclick = exitSample
 
