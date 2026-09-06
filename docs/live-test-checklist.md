@@ -259,7 +259,7 @@ reset it with the reset button on the Ledger tab before a clean full run.
 | Call connects, ledger stays empty | The agent has no tools, or the page is not POSTing them. Confirm 0.1 shows both tool names. |
 | Upload returns `Transcoding failed` | The upload was sent with the wrong content type. `X-Filename` must carry a real audio extension so the MIME type can be derived. |
 | Upload returns `Invalid API key` | `transcribe.py` uses the transcription endpoint, which wants a bare key. A `Bearer` prefix returns 401. |
-| Everything works but feels slow | Turn-taking is `min_latency`. Switch to `balanced` in the agent file. |
+| Everything works but feels slow | Keep `min_latency` and check the Events drawer for `reply.continuation`; a tool result now has its own follow-up reply. If it still feels too eager, switch to `balanced` in the agent file. |
 
 The account should hold exactly one agent, the one `.env` points at. If
 `GET /agents` shows more, the id drifted again and a duplicate was created —

@@ -115,7 +115,12 @@ body.sampling #sample-flag,body.sampling #sample-close{display:inline-flex}
 .lh-status{font:700 10px var(--mono);letter-spacing:1.4px;color:var(--red);white-space:nowrap}
 .lh-status.filed{color:var(--ink-3)}
 .pane-pad{padding:18px 26px 22px}
-.offline{margin:0 0 22px}
+
+.recording-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;padding:20px 26px 0}
+.recording-source{font:700 10px var(--mono);letter-spacing:1.4px;color:var(--ink-3);padding-top:8px;white-space:nowrap}
+.recording-stats{margin-top:16px}
+.recording-section{margin-top:18px}
+.recording-section-head{font:600 10px var(--mono);letter-spacing:1.8px;color:var(--ink-3);text-transform:uppercase;margin:0 0 4px}
 
 .note-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;padding:20px 26px 0}
 .note-company{font:600 30px/1.15 var(--serif);letter-spacing:-.6px;margin:0}

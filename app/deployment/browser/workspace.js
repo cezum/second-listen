@@ -5,6 +5,7 @@ let lastLedger = { sessions: {} }
 let sampleMode = false
 let liveCompany = ''
 let companyBeforeSample = ''
+let historyReadyForNextDebrief = true
 const seenEntries = new Set()
 const SAMPLE_ID = 'sample-greenleaf'
 const SAMPLE = {
@@ -61,6 +62,85 @@ function noteStatus(escalations) {
   else { node.textContent = 'FILED'; node.className = 'lh-status filed' }
 }
 
+function ensureRecordingView() {
+  const current = $('recording-view')
+  if (current) return current
+
+  // Older pages had a standalone report above the two-column workspace.
+  // Move that node into the right sheet at runtime so an already-open tab
+  // still gets the new presentation without exposing a second report card.
+  const legacy = $('offline-result')
+  const sheet = $('sheet')
+  if (!legacy || !sheet) return legacy
+  const legacyHeader = legacy.querySelector('.letterhead')
+  const currentHeader = sheet.querySelector('.letterhead')
+  const legacyClose = legacyHeader?.querySelector('#offline-close')
+  const legacyStatus = legacyHeader?.querySelector('#offline-status')
+  if (legacyClose && currentHeader) {
+    legacyClose.id = 'recording-close'
+    currentHeader.append(legacyClose)
+  }
+  if (legacyStatus && currentHeader) currentHeader.append(legacyStatus)
+  legacyHeader?.remove()
+  legacy.id = 'recording-view'
+  legacy.classList.remove('sheet', 'offline')
+  sheet.append(legacy)
+  return legacy
+}
+
+function recordingElement(id, legacyId = null) {
+  const node = id === 'recording-view' ? ensureRecordingView() : $(id)
+  const fallback = legacyId ? $(legacyId) : null
+  const oldTitle = id === 'sheet-title' ? $('sheet')?.querySelector('.letterhead .lh-title') : null
+  const oldSource = id === 'recording-source' ? $('lh-status') : null
+  return node || fallback || oldTitle || oldSource
+}
+
+function recordingText(id, text, legacyId = null) {
+  const node = recordingElement(id, legacyId)
+  if (node) node.textContent = text
+}
+
+function showRecordingView(open, render = true) {
+  const recording = open === true
+  const view = recordingElement('recording-view', 'offline-result')
+  const close = recordingElement('recording-close', 'offline-close')
+  if (view) view.hidden = !recording
+  if (close) close.hidden = !recording
+  if ($('note-empty')) $('note-empty').hidden = recording
+  if ($('note-filled')) $('note-filled').hidden = recording
+  recordingText('sheet-title', recording
+    ? 'SECOND LISTEN — RECORDING REVIEW'
+    : 'SECOND LISTEN — POST-CALL RISK NOTE')
+  const source = $('recording-source') || $('offline-status')
+  if ($('lh-status')) $('lh-status').hidden = recording && source !== $('lh-status')
+  if (source && source.id === 'offline-status') source.hidden = !recording
+  if ($('sheet')) $('sheet').setAttribute('aria-label', recording ? 'Recording analysis' : 'Debrief risk note')
+  if (!recording && render) renderLedger(lastLedger)
+}
+
+function prepareDebriefView() {
+  historyReadyForNextDebrief = true
+  document.body.classList.remove('recording-open')
+  showRecordingView(false, false)
+  $('note-empty').hidden = false
+  $('note-filled').hidden = true
+  $('lh-status').textContent = 'DRAFT'
+  $('lh-status').className = 'lh-status'
+  refreshPrev()
+}
+
+function clearCurrentAnalysis() {
+  historyReadyForNextDebrief = false
+  document.body.classList.remove('recording-open')
+  showRecordingView(false, false)
+  $('note-empty').hidden = false
+  $('note-filled').hidden = true
+  $('lh-status').textContent = 'DRAFT'
+  $('lh-status').className = 'lh-status'
+  renderPrev({}, false)
+}
+
 function evidenceRow(event, eid, fresh) {
   const row = el('article', 'entry' + (event.escalation ? ' review' : '') + (fresh ? ' flash' : ''))
   row.append(el('span', 'eid', eid))
@@ -77,6 +157,18 @@ function evidenceRow(event, eid, fresh) {
   quote.title = 'Locate this quote in the conversation'
   quote.onclick = () => highlightQuote(event.quote)
   main.append(quote)
+  row.append(main)
+  return row
+}
+
+function recordingEvidenceRow(signal, eid) {
+  const row = el('article', 'entry' + (signal.escalation ? ' review' : ''))
+  row.append(el('span', 'eid', eid))
+  const main = el('div')
+  const meta = el('div', 'entry-meta')
+  meta.append(el('span', 'dim', DIMENSION_LABELS[signal.dimension] || signal.dimension || 'Evidence'))
+  if (signal.escalation) meta.append(el('span', 'chip', 'Trigger'))
+  main.append(meta, el('p', 'signal', signal.signal), el('div', 'quote', '“' + signal.quote + '”'))
   row.append(main)
   return row
 }
@@ -103,6 +195,7 @@ function commitmentRow(c) {
 
 function renderLedger(ledger) {
   if (!sampleMode) lastLedger = ledger
+  if (document.body.classList.contains('recording-open')) return
   const ids = Object.keys(ledger.sessions || {})
   const current = currentSessionId(ledger)
   const session = ledger.sessions[current]
@@ -118,6 +211,9 @@ function renderLedger(ledger) {
 
   $('note-empty').hidden = true
   $('note-filled').hidden = false
+  // Saved follow-ups belong to the next debrief's context, not this
+  // completed report.
+  $('sec-prev').style.display = 'none'
 
   const events = [...(session.events || [])].sort((a, b) => (a.at_seconds ?? 0) - (b.at_seconds ?? 0))
   const evidence = events.filter(e => e.tool === 'log_evidence')
@@ -180,6 +276,7 @@ function renderLedger(ledger) {
         const result = await fetch('/api/history', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session_id: current, company: session.company }) }).then(responseJSON)
         $('company').value = session.company
         feedback(`${result.commitments} follow-up(s) saved for ${session.company}. Start the next inline debrief with this company to check them. These are recorded tasks, not scheduled notifications.`)
+        historyReadyForNextDebrief = false
         refreshPrev()
       } catch (error) { feedback(error.message, true) }
       finally { save.disabled = ws?.readyState === 1 }
@@ -199,20 +296,22 @@ function refreshPrev() {
 }
 function renderPrev(value, isSample) {
   const commitments = value.commitments || []
+  const showHistory = isSample || historyReadyForNextDebrief
   // Filled note.
   const list = $('prev-list'); list.replaceChildren()
   $('prev-head').textContent = 'From last debrief' + (value.last_debrief_at ? ' · ' + value.last_debrief_at.slice(0, 10) : '')
-  if (isSample) list.append(el('div', 'sample-note', 'FICTIONAL PREVIOUS DEBRIEF · HOW THE COMMITMENT CHECK OPENS A CALL'))
-  if (commitments.length) {
+  if (showHistory && isSample) list.append(el('div', 'sample-note', 'FICTIONAL PREVIOUS DEBRIEF · HOW THE COMMITMENT CHECK OPENS A CALL'))
+  if (showHistory && commitments.length) {
     for (const c of commitments) list.append(commitmentRow(c))
     $('sec-prev').style.display = ''
   } else $('sec-prev').style.display = 'none'
   // Empty note.
+  $('sec-prev-empty').style.display = showHistory ? '' : 'none'
   const emptyList = $('prev-empty'); emptyList.replaceChildren()
   $('prev-head-empty').textContent = 'From last debrief' + (value.last_debrief_at ? ' · ' + value.last_debrief_at.slice(0, 10) : '')
-  if (commitments.length) {
+  if (showHistory && commitments.length) {
     for (const c of commitments) emptyList.append(commitmentRow(c))
-  } else {
+  } else if (showHistory) {
     emptyList.append(el('p', 'empty', 'No saved follow-ups for this company yet. Save a debrief’s agreed actions, and the next one opens by checking them.'))
   }
 }
@@ -254,6 +353,7 @@ async function downloadNote(id, company) {
       downloadText(await res.text(), noteFilename(company, id))
     }
     feedback('Follow-up note downloaded.')
+    if (!sampleMode) clearCurrentAnalysis()
   } catch (error) { feedback(error.message, true) }
 }
 
@@ -310,6 +410,16 @@ $('file').onchange = async () => {
   if (!file) return
   if (!file.size || file.size > 50 * 1024 * 1024) { feedback('Choose an audio file between 1 byte and 50 MB.', true); return }
   const button = $('analyze-btn'); button.disabled = true; button.textContent = 'Transcribing & analyzing…'
+  recordingText('recording-title', 'Recording review')
+  recordingText('recording-sub', file.name + ' · processing')
+  recordingText('recording-source', 'PROCESSING', 'offline-status')
+  const stats = $('recording-stats')
+  if (stats) { stats.hidden = true; stats.replaceChildren() }
+  const body = recordingElement('offline-body')
+  if (!body) throw new Error('Recording report panel is unavailable. Please reopen the page.')
+  body.replaceChildren(el('p', 'empty', 'Transcribing and analyzing the recording…'))
+  document.body.classList.add('recording-open')
+  showRecordingView(true)
   feedback('Processing ' + file.name + '. Longer recordings can take several minutes. Keep this page open.')
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), 15 * 60 * 1000)
@@ -321,47 +431,82 @@ $('file').onchange = async () => {
   finally { clearTimeout(timeout); button.disabled = false; button.textContent = 'Upload a recording →' }
 }
 function renderOfflineError(message) {
-  $('offline-status').textContent = 'UPLOADED'
-  $('offline-body').replaceChildren(el('p', 'empty', message))
-  $('offline-result').hidden = false; feedback(message, true)
+  recordingText('recording-source', 'ERROR', 'offline-status')
+  recordingText('recording-sub', 'The recording could not be analyzed')
+  const stats = $('recording-stats')
+  if (stats) { stats.hidden = true; stats.replaceChildren() }
+  const body = recordingElement('offline-body')
+  if (body) body.replaceChildren(el('p', 'empty', message))
+  document.body.classList.add('recording-open')
+  showRecordingView(true)
+  feedback(message, true)
 }
 function renderOffline(data, name) {
-  $('offline-status').textContent = (data.language || '').toUpperCase() || 'UPLOADED'
-  const body = $('offline-body'); body.replaceChildren()
+  recordingText('recording-title', 'Recording review')
+  recordingText('recording-sub', name + (data.language ? ' · ' + data.language.toUpperCase() : ''))
+  recordingText('recording-source', (data.language || '').toUpperCase() || 'UPLOADED', 'offline-status')
+  const body = recordingElement('offline-body')
+  if (!body) throw new Error('Recording report panel is unavailable. Please reopen the page.')
+  body.replaceChildren()
   const analysis = data.analysis || {}; const signals = analysis.signals || []; const questions = analysis.questions || []
+  const review = signals.filter(s => s.escalation)
+  const other = signals.filter(s => !s.escalation)
+  const stats = $('recording-stats')
+  if (stats) stats.replaceChildren()
+  for (const [label, value, hot] of [['signals', signals.length, false], ['to review', review.length, true], ['questions', questions.length, false]]) {
+    const item = el('span', 'stat' + (hot ? ' hot' : ''))
+    item.append(el('b', '', String(value)), document.createTextNode(label))
+    if (stats) stats.append(item)
+  }
+  if (stats) stats.hidden = false
   body.append(el('div', 'notice', `${analysis.method === 'llm' ? 'AI analysis' : 'Keyword screening'} · ${analysis.notice || 'Verify every candidate against the recording.'}`))
   if (data.cached) body.append(el('p', 'empty', 'Saved transcription reused; analysis rerun.'))
-  body.append(el('h3', '', signals.length + ' candidates to verify'))
-  if (!signals.length) body.append(el('p', 'empty', 'No candidates matched. This does not establish that the company has no risks. Check the transcript for missed context.'))
-  signals.forEach((s, i) => {
-    const row = el('div', 'entry' + (s.escalation ? ' review' : ''))
-    row.append(el('span', 'eid', 'R-' + pad(i + 1)))
-    const main = el('div')
-    const meta = el('div', 'entry-meta')
-    meta.append(el('span', 'dim', DIMENSION_LABELS[s.dimension] || s.dimension))
-    if (s.escalation) meta.append(el('span', 'chip', 'Trigger'))
-    main.append(meta, el('p', 'signal', s.signal), el('div', 'quote', '“' + s.quote + '”'))
-    row.append(main); body.append(row)
-  })
-  if (questions.length) {
-    body.append(el('h3', '', 'Questions for the next conversation'))
-    for (const q of questions) { const row = el('div', 'q-row'); row.append(el('span', 'q', '↗'), el('span', '', q.question)); body.append(row) }
+
+  function section(title) {
+    const node = el('section', 'recording-section')
+    node.append(el('h3', 'recording-section-head', title))
+    return node
   }
-  const details = el('details'); details.append(el('summary', '', 'Read the full transcript'), el('div', 'offline-transcript', data.text || 'No speech was transcribed.')); body.append(details)
+  if (review.length) {
+    const node = section('Needs your review')
+    review.forEach((s, i) => node.append(recordingEvidenceRow(s, 'R-' + pad(i + 1))))
+    body.append(node)
+  }
+  if (other.length) {
+    const node = section('Other observations')
+    other.forEach((s, i) => node.append(recordingEvidenceRow(s, 'R-' + pad(review.length + i + 1))))
+    body.append(node)
+  }
+  if (!signals.length) body.append(el('p', 'empty', 'No candidates matched. This does not establish that the company has no risks. Check the transcript for missed context.'))
+  if (questions.length) {
+    const node = section('Suggested questions for the next conversation')
+    for (const q of questions) { const row = el('div', 'q-row'); row.append(el('span', 'q', '↗'), el('span', '', q.question)); node.append(row) }
+    body.append(node)
+  }
+  const transcript = section('Source transcript')
+  const details = el('details'); details.append(el('summary', '', 'Read the full transcript'), el('div', 'offline-transcript', data.text || 'No speech was transcribed.')); transcript.append(details); body.append(transcript)
   const bar = el('div', 'note-bar'); const download = el('button', 'export', 'Download recording note ↓')
   download.type = 'button'
   download.onclick = () => {
     const text = [`# Recording review — ${name}`, '', `Analysis method: ${analysis.method || 'keyword'}`, analysis.notice || '', '', '## Candidates (not final grades)', ...signals.map(s => `\n- ${s.signal}\n  Quote: “${s.quote}”\n  Checklist review: ${s.escalation ? 'needed' : 'not flagged'}`), '', '## Suggested questions (not agreed actions)', ...questions.map(q => '- ' + q.question), '', '## Transcript', data.text || '', '', 'Generated by Second Listen. Verify quotes against the audio.']
-    downloadText(text.join('\n'), name.replace(/\.[^.]+$/, '') + '-review.md'); feedback('Recording note downloaded.')
+    downloadText(text.join('\n'), name.replace(/\.[^.]+$/, '') + '-review.md')
+    feedback('Recording note downloaded.')
+    clearCurrentAnalysis()
   }
   bar.append(download); body.append(bar)
-  $('offline-result').hidden = false
-  $('offline-result').scrollIntoView({ behavior: 'smooth', block: 'start' })
+  document.body.classList.add('recording-open')
+  showRecordingView(true)
+  const view = recordingElement('recording-view', 'offline-result')
+  view?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
 // ---------- wiring ----------
 
-$('offline-close').onclick = () => { $('offline-result').hidden = true }
+const recordingClose = recordingElement('recording-close', 'offline-close')
+if (recordingClose) recordingClose.onclick = () => {
+  document.body.classList.remove('recording-open')
+  showRecordingView(false)
+}
 
 $('btn-stop').onclick = () => stop()
 $('company').addEventListener('change', () => { if (!sampleMode) refreshPrev() })

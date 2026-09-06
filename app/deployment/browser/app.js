@@ -179,6 +179,10 @@ const pendingTools = []
 let lastAgentReplyAt = 0
 let userSpokeSinceReply = true
 let suppressReply = false
+// A tool result intentionally causes a new agent reply without a new user
+// turn. Keep that reply out of the duplicate-burst guard; otherwise the
+// first answer after a logged signal is silently discarded as a duplicate.
+let toolReplyExpected = false
 
 // --- microphones ---
 
@@ -435,6 +439,16 @@ async function addWorklet(ctx, code, name) {
   return new AudioWorkletNode(ctx, name)
 }
 
+async function fetchVoiceToken() {
+  const res = await fetch('/token', { cache: 'no-store', headers: { Accept: 'application/json' } })
+  const body = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(body.error || 'Voice token service is unavailable. Please retry.')
+  if (typeof body.token !== 'string' || !body.token.trim()) {
+    throw new Error('Voice token was not returned. Please retry.')
+  }
+  return body.token.trim()
+}
+
 async function start() {
   if (AGENT.preview) return
   exitSample()
@@ -442,6 +456,10 @@ async function start() {
   if (!company) { feedback('Enter the company name before starting your debrief.', true); $('company').focus(); return }
   if (!navigator.mediaDevices?.getUserMedia) { feedback('Microphone access requires HTTPS or localhost.', true); return }
   liveCompany = company
+  // A recording review can occupy the right card after an upload. Starting a
+  // new live debrief is a new workflow, so switch the card back immediately
+  // and prepare the prior commitments for this next conversation.
+  if (typeof prepareDebriefView === 'function') prepareDebriefView()
   const generation = ++callGeneration
   sessionId = null; selectedSession = null; pendingTools.length = 0; lastEvent = null
   printedReply = liveReply = null
@@ -460,13 +478,9 @@ async function start() {
       AGENT.config = context.config
     }
     // The API key never reaches the page; this token expires in 60 seconds.
-    const res = await fetch('/token')
-    if (!res.ok) {
-      setStatus('error', 'could not mint a token, check the API key')
-      reset()
-      return
-    }
-    const { token } = await res.json()
+    // Fetch immediately before each connection. The temporary token is
+    // single-use and the API key remains on the server.
+    const token = await fetchVoiceToken()
 
     // Two contexts, created in the click handler so Safari starts them.
     captureCtx = new AudioContext({ sampleRate: WIRE_RATE })
@@ -576,7 +590,10 @@ async function start() {
 
         case 'reply.started':
           lastEvent = 'reply.started'
-          if (!userSpokeSinceReply && lastAgentReplyAt > 0) {
+          if (toolReplyExpected) {
+            toolReplyExpected = false
+            logEvent('down', 'reply.continuation', 'after tool result')
+          } else if (!userSpokeSinceReply && lastAgentReplyAt > 0) {
             // No user speech since the last agent reply: back-to-back burst.
             suppressReply = true
             logEvent('down', 'reply.suppressed', 'no user turn between replies')
@@ -777,6 +794,7 @@ function reset() {
   lastAgentReplyAt = 0
   userSpokeSinceReply = true
   suppressReply = false
+  toolReplyExpected = false
   open.forEach((run) => paint(run, true))
   open.clear()
   $('btn').disabled = false
@@ -958,6 +976,7 @@ function requestArchive() {
 
 function flushTools() {
   if (lastEvent !== 'reply.done' || !pendingTools.length || ws?.readyState !== 1) return
+  toolReplyExpected = true
   for (const tool of pendingTools.splice(0)) {
     ws?.send(JSON.stringify({
       type: 'tool.result',

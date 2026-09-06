@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="Turn the details from a founder call into traceable risk signals and agreed follow-ups. A voice debrief partner powered by AssemblyAI.">
 <title>Second Listen · The details worth following up</title>
-<link rel="stylesheet" href="/styles.css?v=20">
+<link rel="stylesheet" href="/styles.css?v=23">
 </head>
 <body>
 <main>
@@ -17,11 +17,6 @@
 
   <div id="preview-notice" class="notice" hidden>Sample preview · Live voice and uploads are disabled. Explore the fictional debrief below.</div>
   <div id="feedback" class="notice" role="status" aria-live="polite" hidden></div>
-
-  <section class="sheet offline" id="offline-result" hidden aria-label="Recording analysis">
-    <div class="letterhead"><span class="lh-title">SECOND LISTEN — RECORDING NOTE</span><button class="foot-link" id="offline-close" type="button">Close ✕</button><span class="lh-status" id="offline-status">UPLOADED</span></div>
-    <div class="pane-pad" id="offline-body"></div>
-  </section>
 
   <div class="work">
     <!-- Left: the recorder. One primary action; everything else is a quiet link. -->
@@ -66,12 +61,16 @@
 
     <!-- Right: the risk note. A document, not a dashboard. -->
     <section class="sheet" id="sheet" aria-label="Debrief risk note">
-      <div class="letterhead"><span class="lh-title">SECOND LISTEN — POST-CALL RISK NOTE</span><span class="lh-status" id="lh-status">DRAFT</span></div>
+      <div class="letterhead">
+        <span class="lh-title" id="sheet-title">SECOND LISTEN — POST-CALL RISK NOTE</span>
+        <button class="foot-link" id="recording-close" type="button" hidden>Back to live debrief ↩</button>
+        <span class="lh-status" id="lh-status">DRAFT</span>
+      </div>
 
       <div id="note-empty" class="pane-pad">
         <p class="empty-line">No debrief yet.</p>
         <p class="empty-hint">Start on the left — signals, quotes and agreed actions are filed here while you speak.</p>
-        <div class="sect">
+        <div class="sect" id="sec-prev-empty">
           <div class="sect-head" id="prev-head-empty">From last debrief</div>
           <div id="prev-empty"></div>
         </div>
@@ -121,6 +120,18 @@
           <span class="trust">Quotes are the source. Review flags stay with you.</span>
         </div>
       </div>
+
+      <div id="recording-view" hidden aria-label="Recording analysis">
+        <div class="recording-head">
+          <div>
+            <h2 class="note-company" id="recording-title">Recording review</h2>
+            <p class="note-sub" id="recording-sub"></p>
+          </div>
+          <span class="recording-source" id="recording-source">PROCESSING</span>
+        </div>
+        <div class="stats recording-stats" id="recording-stats" hidden></div>
+        <div class="pane-pad" id="offline-body"></div>
+      </div>
     </section>
   </div>
 
@@ -141,7 +152,7 @@
   </div>
 </main>
 <script>window.AGENT = {{AGENT_JSON}}</script>
-<script src="/app.js?v=9"></script>
-<script src="/workspace.js?v=9"></script>
+<script src="/app.js?v=12"></script>
+<script src="/workspace.js?v=14"></script>
 </body>
 </html>

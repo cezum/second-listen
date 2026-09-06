@@ -15,6 +15,7 @@ import os
 import re
 import sys
 import threading
+import time
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -39,6 +40,11 @@ UPLOAD_SLOTS = threading.BoundedSemaphore(2)
 AGENT = None
 PAGE = ''
 DIMENSIONS = {'operations', 'exit_potential', 'self_funding', 'team_integrity', 'financial_health'}
+TOKEN_EXPIRES_IN_SECONDS = 60
+
+
+class TokenError(Exception):
+    """A safe, user-facing failure from the temporary-token proxy."""
 
 
 def debug_log(*args):
@@ -60,12 +66,46 @@ def public_agent(agent):
     return copied
 
 
+def render_page():
+    """Render the current HTML shell so a long-lived dev server cannot serve stale markup."""
+    return ((HERE / 'index.html').read_text(encoding='utf-8')
+            .replace('{{AGENT_NAME}}', html.escape(AGENT['name']))
+            .replace('{{AGENT_JSON}}', json.dumps(AGENT).replace('<', '\\u003c')))
+
+
 def resolve_agent():
     name = os.environ.get('AGENT', 'second-listen')
     agent = read_agent(name)
     history.apply_history(agent)
     result = ensure_agent(agent, name=name)
     return {'id': result['id'], 'name': agent['name']}
+
+
+def mint_token():
+    """Mint one browser token without leaking the upstream response.
+
+    The browser needs only the single-use token.  Returning a small allowlist
+    also prevents an unexpected upstream field from being copied into the
+    client response, and the error path deliberately omits raw API details.
+    """
+    for attempt in range(2):
+        try:
+            payload = aai(f'/token?product=voice_agent&expires_in_seconds={TOKEN_EXPIRES_IN_SECONDS}')
+            break
+        except (ApiError, OSError) as err:
+            retryable = isinstance(err, OSError) or (
+                isinstance(err, ApiError) and (err.status == 408 or err.status == 429 or err.status >= 500)
+            )
+            if attempt == 0 and retryable:
+                time.sleep(0.4)
+                continue
+            debug_log('temporary voice token request failed')
+            raise TokenError('Voice token service is unavailable. Please retry.') from err
+    token = payload.get('token') if isinstance(payload, dict) else None
+    if not isinstance(token, str) or not token.strip():
+        debug_log('temporary voice token response did not contain a token')
+        raise TokenError('Voice token service returned no usable token. Please retry.')
+    return {'token': token.strip(), 'expires_in_seconds': TOKEN_EXPIRES_IN_SECONDS}
 
 
 def read_ledger():
@@ -215,18 +255,26 @@ class Handler(BaseHTTPRequestHandler):
                 if demo_only():
                     self._json(503, {'error': 'Live voice is disabled in preview mode'})
                 else:
-                    self._json(200, aai('/token?product=voice_agent&expires_in_seconds=60'))
+                    self._json(200, mint_token())
             elif path == '/agent':
                 self._json(200, public_agent(AGENT['config']) if AGENT.get('config') else public_agent(aai(f"/agents/{AGENT['id']}")))
             elif path in ('/app.js', '/workspace.js', '/styles.css'):
                 kind = 'text/css' if path.endswith('.css') else 'text/javascript'
                 self._send(200, (HERE / path[1:]).read_bytes(), kind + '; charset=utf-8')
             elif path == '/':
-                self._send(200, PAGE.encode('utf-8'), 'text/html; charset=utf-8')
+                # Keep the response in sync with index.html during local
+                # iteration. JS/CSS already load from disk; serving a cached
+                # HTML shell here can otherwise leave the upload wiring and
+                # its recording-view elements out of sync.
+                self._send(200, render_page().encode('utf-8'), 'text/html; charset=utf-8')
             else:
                 self._json(404, {'error': 'Not found'})
-        except ApiError as err:
-            debug_log(err)
+        except TokenError as err:
+            self._json(502, {'error': str(err)})
+        except ApiError:
+            # Do not echo upstream bodies: they are not useful to the browser
+            # and must never become a path for credential leakage.
+            debug_log('AssemblyAI request failed')
             self._json(502, {'error': 'AssemblyAI is unavailable. Please retry.'})
         except (ValueError, OSError) as err:
             debug_log(err)

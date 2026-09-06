@@ -80,21 +80,11 @@
     }
   ],
 
-  // min_latency ends turns faster and is least patient in silence, which
-  // keeps the debrief exchange snappy over a cross-Pacific voice link.
-  // min_silence=800 (Round 1.9 on 2026-09-03: 650 grabbed the floor inside
-  // thinking pauses and felt like being cut off; 800 balances natural 0.5-1s
-  // topic pauses against mid-thought interruption). If sentences still get
-  // cut in half, raise toward 1000; if the agent still cannot get a word in
-  // at natural pauses, lower toward 600.
+  // min_latency ends turns fastest. Leave the VAD thresholds adaptive: fixed
+  // min_silence/max_silence values disable the service's pacing and entity-
+  // aware waiting, which is a poor fit for a spoken debrief with pauses.
   // https://www.assemblyai.com/docs/voice-agents/voice-agent-api/turn-detection-and-interruptions
   "input": {
-    "transcription_mode": "min_latency",
-    "turn_detection": {
-      "vad_threshold": 0.5,
-      "min_silence": 800,
-      "max_silence": 3000,
-      "interrupt_response": true
-    }
+    "transcription_mode": "min_latency"
   }
 }

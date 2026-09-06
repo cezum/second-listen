@@ -52,3 +52,8 @@ from `app/data/history/<company>.json` at publish time — no vector store, no D
   covers the demo script's signals in Chinese. Remaining: voice pass of v0.4
   and of the commitment check (Round 2), demo rehearsal/video, slides,
   public-repo finalization (frozen until the project is finished).
+- 2026-09-06 — Live follow-up replies no longer get mistaken for duplicate
+  burst replies after a client-side tool result; fixed VAD thresholds were
+  removed so `min_latency` can use the service's adaptive turn pacing. Upload
+  analysis now replaces the right-side risk note in place, reusing the same
+  card shell and section hierarchy while the left input card stays visible.

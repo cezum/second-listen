@@ -224,8 +224,14 @@ def _request(url: str, label: str, method: str, headers: dict, data: Optional[by
 
 
 def aai(path: str, method: str = "GET", body: Any = None, headers: Optional[dict] = None) -> Any:
+    # Accept the documented raw key as well as a value copied with the
+    # optional Bearer prefix.  Normalize only in memory; never return or log
+    # this value.
+    api_key = os.environ.get('ASSEMBLYAI_API_KEY', '').strip()
+    if api_key.lower().startswith('bearer '):
+        api_key = api_key[7:].strip()
     request_headers = {
-        "Authorization": f"Bearer {os.environ.get('ASSEMBLYAI_API_KEY', '')}",
+        "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
         **(headers or {}),
     }
