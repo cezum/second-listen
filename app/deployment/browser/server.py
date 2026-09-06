@@ -297,6 +297,8 @@ class Handler(BaseHTTPRequestHandler):
                     filename = unquote(self.headers.get('X-Filename') or 'recording.ogg')
                     if Path(filename).suffix.lower() not in transcribe._MIME:
                         raise ValueError('Unsupported audio format')
+                    company = company_name(unquote(self.headers.get('X-Company') or ''))
+                    prior_history = history.load_history(company) or {}
                     cache_file = TRANSCRIPT_CACHE / (hashlib.sha256(audio).hexdigest() + '.json')
                     result = read_json(cache_file)
                     cached = isinstance(result, dict) and isinstance(result.get('text'), str)
@@ -305,7 +307,9 @@ class Handler(BaseHTTPRequestHandler):
                         atomic_write_text(cache_file, json.dumps(result, ensure_ascii=False))
                     result = copy.deepcopy(result)
                     result['cached'] = cached
-                    result['analysis'] = analyze.analyze_transcript(result.get('text', ''), result.get('language'))
+                    result['company'] = company
+                    result['analysis'] = analyze.analyze_transcript(
+                        result.get('text', ''), result.get('language'), prior_history)
                     self._json(200, result)
                 finally:
                     UPLOAD_SLOTS.release()

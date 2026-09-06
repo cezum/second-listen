@@ -14,7 +14,9 @@ AGENT=http-tools python publish.py
 python deployment/browser/server.py
 ```
 
-Open http://localhost:3000 and start the call.
+Open http://localhost:3000, enter the investee company name, and start a call
+or upload a recording. Both paths use the same risk-review playbook; an upload
+also checks that company's saved follow-ups when available.
 
 ## 3. Iterate
 
@@ -29,6 +31,11 @@ Publishes `agents/<AGENT>.jsonc` on startup if it has no id yet, so a fresh clon
 `GET /token` proxies AssemblyAI's token endpoint using your key and returns a 60 second session token. The key is never sent to the page.
 
 The page streams the microphone as 24 kHz PCM16 over `wss://agents.assemblyai.com/v1/ws`, plays the reply back, and discards queued audio when you interrupt. Capture and playback each run in their own AudioContext with a resampling worklet, so a browser that refuses to open a context at 24 kHz still sounds right.
+
+An uploaded recording requires the same company field as a live debrief. The
+report is scoped to that company and compares the transcript with saved prior
+follow-ups, but recording candidates are not automatically written to the live
+debrief ledger.
 
 The side pane has two tabs. Events lists every websocket frame in both directions, with audio runs collapsed into counts. Agent shows the published agent as the API stored it, read only, served by `GET /agent`. Tool header values and LLM keys are stripped from that response, but the system prompt is in it, so on a public deployment anyone opening the page can read it.
 

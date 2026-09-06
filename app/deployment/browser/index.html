@@ -3,15 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="Turn the details from a founder call into traceable risk signals and agreed follow-ups. A voice debrief partner powered by AssemblyAI.">
-<title>Second Listen · The details worth following up</title>
-<link rel="stylesheet" href="/styles.css?v=23">
+<meta name="description" content="Turn a post-investment visit or recording into traceable risk signals and agreed follow-ups. A voice debrief partner powered by AssemblyAI.">
+<title>Second Listen · Post-investment notes with evidence</title>
+<link rel="stylesheet" href="/styles.css?v=28">
 </head>
 <body>
 <main>
   <header class="top">
     <span class="wordmark">Second Listen<i>.</i></span>
-    <span class="tagline">Post-call debrief notes with evidence — speak freely, keep the quotes.</span>
+    <span class="tagline">Post-investment notes with evidence — voice in, quotes kept.</span>
     <button id="sample-btn" class="top-link" type="button">Watch a sample ↗</button>
   </header>
 
@@ -19,24 +19,24 @@
   <div id="feedback" class="notice" role="status" aria-live="polite" hidden></div>
 
   <div class="work">
-    <!-- Left: the recorder. One primary action; everything else is a quiet link. -->
-    <section class="console" aria-label="Debrief console">
+    <!-- Left: the recorder. Two equal entry points for the same review flow. -->
+    <section class="console" aria-label="Post-investment review console">
       <div id="console-idle">
-        <p class="eyebrow">Debrief</p>
-        <h1>What happened on the call?</h1>
-        <p class="sub">Speak for two minutes, as you remember it. The partner listens for what changed, asks one focused question at a time, and files every signal with the quote behind it.</p>
+        <p class="eyebrow">Post-investment review</p>
+        <h1>What changed since the last check-in?</h1>
+        <p class="sub">Speak freely or upload a recording. The partner listens for what changed, asks focused questions, and files every signal with the quote behind it.</p>
         <div class="field">
           <label for="company">Company</label>
           <input id="company" maxlength="120" placeholder="e.g. GreenLeaf" autocomplete="off">
         </div>
-        <button class="start" id="btn" type="button"><span class="rec-dot" aria-hidden="true"></span>Start debrief</button>
-        <div class="alt">
-          <button class="linklike" id="analyze-btn" type="button">Upload a recording →</button>
+        <div class="entry-actions">
+          <button class="start" id="btn" type="button"><span class="rec-dot" aria-hidden="true"></span>Start debrief</button>
+          <button class="upload-action" id="analyze-btn" type="button"><span class="upload-icon" aria-hidden="true">↥</span>Upload a recording</button>
         </div>
         <input type="file" id="file" accept="audio/*,.ogg,.mp3,.wav,.m4a,.mp4,.webm,.flac,.aac,.opus" hidden>
         <select id="mic" aria-label="Microphone" hidden><option value="">Default microphone</option></select>
         <span id="cost" hidden></span>
-        <p class="consent">Starting a debrief sends your voice to AssemblyAI for transcription. Use material you have permission to share. The partner replies in English; uploaded recordings are analyzed in their own language.</p>
+        <p class="consent">Debrief audio is sent to AssemblyAI for transcription. Use material you have permission to share. The partner replies in English; uploaded recordings are analyzed in their original language.</p>
       </div>
 
       <div id="console-live">
@@ -60,25 +60,42 @@
     </section>
 
     <!-- Right: the risk note. A document, not a dashboard. -->
-    <section class="sheet" id="sheet" aria-label="Debrief risk note">
+    <section class="sheet" id="sheet" aria-label="Post-investment visit notes">
       <div class="letterhead">
-        <span class="lh-title" id="sheet-title">SECOND LISTEN — POST-CALL RISK NOTE</span>
-        <button class="foot-link" id="recording-close" type="button" hidden>Back to live debrief ↩</button>
-        <span class="lh-status" id="lh-status">DRAFT</span>
+        <span class="lh-title" id="sheet-title">SECOND LISTEN — POST-INVESTMENT VISIT NOTES</span>
+        <button class="foot-link" id="recording-close" type="button" hidden>Back to workspace ↩</button>
+        <span class="lh-status" id="lh-status">READY</span>
       </div>
 
-      <div id="note-empty" class="pane-pad">
-        <p class="empty-line">No debrief yet.</p>
-        <p class="empty-hint">Start on the left — signals, quotes and agreed actions are filed here while you speak.</p>
+      <div id="note-empty" class="pane-pad empty-pane">
+        <div class="empty-intro">
+          <p class="eyebrow">Post-investment visit notes</p>
+          <h2 class="empty-line">Ready for the next check-in.</h2>
+          <p class="empty-hint">Start a debrief or upload a recording. Evidence, review flags and agreed follow-ups will be filed here.</p>
+        </div>
         <div class="sect" id="sec-prev-empty">
-          <div class="sect-head" id="prev-head-empty">From last debrief</div>
+          <div class="sect-head" id="prev-head-empty">Previous follow-ups</div>
           <div id="prev-empty"></div>
         </div>
-        <div class="sect">
-          <div class="sect-head">Needs your review</div>
-          <div class="ghost-row"><span class="gid">R-01</span><span>Signals that trip a checklist item are filed here, with the quote and the second it was said. The flag is a prompt — the call is yours.</span></div>
-          <div class="sect-head">Agreed actions</div>
-          <div class="ghost-row"><span class="gid">A-01</span><span>Follow-ups you agree out loud — each with an owner and a deadline.</span></div>
+        <div class="empty-form" aria-label="Empty post-investment visit notes form">
+          <div class="empty-form-row">
+            <span class="empty-form-label">Company</span>
+            <span class="empty-form-value">Enter a company on the left</span>
+          </div>
+          <div class="empty-form-row">
+            <span class="empty-form-label">Source</span>
+            <span class="empty-form-value">Debrief or recording</span>
+          </div>
+        </div>
+        <div class="empty-sections">
+          <div class="empty-section">
+            <div class="sect-head">Needs your review <span class="empty-count">—</span></div>
+            <div class="empty-rule">Risk signals will appear here with their source quotes.</div>
+          </div>
+          <div class="empty-section">
+            <div class="sect-head">Agreed actions <span class="empty-count">—</span></div>
+            <div class="empty-rule">Follow-ups will appear here with an owner and deadline.</div>
+          </div>
         </div>
       </div>
 
@@ -99,7 +116,7 @@
         </div>
 
         <div class="sect" id="sec-prev">
-          <div class="sect-head" id="prev-head">From last debrief</div>
+          <div class="sect-head" id="prev-head">Previous follow-ups</div>
           <div id="prev-list"></div>
         </div>
         <div class="sect" id="sec-review" style="display:none">
@@ -136,7 +153,7 @@
   </div>
 
   <footer class="page-foot">
-    <span>SECOND LISTEN — a conversation becomes a record.</span>
+    <span>SECOND LISTEN — a visit becomes a record.</span>
     <span>Built for the lablab.ai × AssemblyAI hackathon · 2026 · <button class="foot-link" id="debug-toggle" type="button">events</button></span>
   </footer>
 
@@ -153,6 +170,6 @@
 </main>
 <script>window.AGENT = {{AGENT_JSON}}</script>
 <script src="/app.js?v=12"></script>
-<script src="/workspace.js?v=14"></script>
+<script src="/workspace.js?v=17"></script>
 </body>
 </html>

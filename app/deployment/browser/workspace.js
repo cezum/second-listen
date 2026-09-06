@@ -111,11 +111,11 @@ function showRecordingView(open, render = true) {
   if ($('note-filled')) $('note-filled').hidden = recording
   recordingText('sheet-title', recording
     ? 'SECOND LISTEN — RECORDING REVIEW'
-    : 'SECOND LISTEN — POST-CALL RISK NOTE')
+    : 'SECOND LISTEN — POST-INVESTMENT VISIT NOTES')
   const source = $('recording-source') || $('offline-status')
   if ($('lh-status')) $('lh-status').hidden = recording && source !== $('lh-status')
   if (source && source.id === 'offline-status') source.hidden = !recording
-  if ($('sheet')) $('sheet').setAttribute('aria-label', recording ? 'Recording analysis' : 'Debrief risk note')
+  if ($('sheet')) $('sheet').setAttribute('aria-label', recording ? 'Recording analysis' : 'Post-investment visit notes')
   if (!recording && render) renderLedger(lastLedger)
 }
 
@@ -170,6 +170,24 @@ function recordingEvidenceRow(signal, eid) {
   if (signal.escalation) meta.append(el('span', 'chip', 'Trigger'))
   main.append(meta, el('p', 'signal', signal.signal), el('div', 'quote', '“' + signal.quote + '”'))
   row.append(main)
+  return row
+}
+
+function followupRow(check) {
+  const labels = {
+    completed: 'Resolved',
+    unresolved: 'Still open',
+    unclear: 'Needs confirmation',
+    not_addressed: 'Not addressed',
+  }
+  const row = el('article', 'followup-row status-' + check.status)
+  const main = el('div')
+  main.append(el('p', 'task', check.task))
+  const meta = [check.owner && 'Owner ' + check.owner, check.deadline && 'due ' + check.deadline].filter(Boolean).join(' · ')
+  if (meta) main.append(el('p', 'task-meta', meta))
+  if (check.quote) main.append(el('div', 'quote', '“' + check.quote + '”'))
+  if (check.note) main.append(el('p', 'followup-note', check.note))
+  row.append(el('span', 'followup-status', labels[check.status] || 'Review'), main)
   return row
 }
 
@@ -296,28 +314,29 @@ function refreshPrev() {
 }
 function renderPrev(value, isSample) {
   const commitments = value.commitments || []
-  const showHistory = isSample || historyReadyForNextDebrief
+  const showHistory = isSample || (historyReadyForNextDebrief && commitments.length > 0)
   // Filled note.
   const list = $('prev-list'); list.replaceChildren()
-  $('prev-head').textContent = 'From last debrief' + (value.last_debrief_at ? ' · ' + value.last_debrief_at.slice(0, 10) : '')
+  $('prev-head').textContent = 'Previous follow-ups' + (value.last_debrief_at ? ' · ' + value.last_debrief_at.slice(0, 10) : '')
   if (showHistory && isSample) list.append(el('div', 'sample-note', 'FICTIONAL PREVIOUS DEBRIEF · HOW THE COMMITMENT CHECK OPENS A CALL'))
   if (showHistory && commitments.length) {
     for (const c of commitments) list.append(commitmentRow(c))
     $('sec-prev').style.display = ''
   } else $('sec-prev').style.display = 'none'
   // Empty note.
-  $('sec-prev-empty').style.display = showHistory ? '' : 'none'
+  if ($('sec-prev-empty')) $('sec-prev-empty').style.display = showHistory ? '' : 'none'
   const emptyList = $('prev-empty'); emptyList.replaceChildren()
-  $('prev-head-empty').textContent = 'From last debrief' + (value.last_debrief_at ? ' · ' + value.last_debrief_at.slice(0, 10) : '')
+  $('prev-head-empty').textContent = 'Previous follow-ups' + (value.last_debrief_at ? ' · ' + value.last_debrief_at.slice(0, 10) : '')
   if (showHistory && commitments.length) {
     for (const c of commitments) emptyList.append(commitmentRow(c))
-  } else if (showHistory) {
-    emptyList.append(el('p', 'empty', 'No saved follow-ups for this company yet. Save a debrief’s agreed actions, and the next one opens by checking them.'))
   }
 }
-function refreshLedger() {
+function refreshLedger(render = true) {
   if (sampleMode) return
-  return fetch('/api/ledger').then(responseJSON).then(renderLedger).catch(error => feedback(error.message, true))
+  return fetch('/api/ledger').then(responseJSON).then(ledger => {
+    lastLedger = ledger
+    if (render) renderLedger(ledger)
+  }).catch(error => feedback(error.message, true))
 }
 
 function highlightQuote(quote) {
@@ -404,14 +423,24 @@ $('sample-close').onclick = exitSample
 
 // ---------- upload: the recording note ----------
 
-$('analyze-btn').onclick = () => { if (sampleMode) exitSample(); $('file').click() }
+$('analyze-btn').onclick = () => {
+  if (sampleMode) exitSample()
+  if (!$('company').value.trim()) {
+    feedback('Enter the company name before uploading a recording.', true)
+    $('company').focus()
+    return
+  }
+  $('file').click()
+}
 $('file').onchange = async () => {
   const file = $('file').files[0]; $('file').value = ''
   if (!file) return
   if (!file.size || file.size > 50 * 1024 * 1024) { feedback('Choose an audio file between 1 byte and 50 MB.', true); return }
+  const company = $('company').value.trim()
+  if (!company) { feedback('Enter the company name before uploading a recording.', true); $('company').focus(); return }
   const button = $('analyze-btn'); button.disabled = true; button.textContent = 'Transcribing & analyzing…'
-  recordingText('recording-title', 'Recording review')
-  recordingText('recording-sub', file.name + ' · processing')
+  recordingText('recording-title', company)
+  recordingText('recording-sub', company + ' · ' + file.name + ' · processing')
   recordingText('recording-source', 'PROCESSING', 'offline-status')
   const stats = $('recording-stats')
   if (stats) { stats.hidden = true; stats.replaceChildren() }
@@ -424,8 +453,8 @@ $('file').onchange = async () => {
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), 15 * 60 * 1000)
   try {
-    const data = await fetch('/api/upload', { method: 'POST', headers: { 'X-Filename': encodeURIComponent(file.name) }, body: file, signal: controller.signal }).then(responseJSON)
-    renderOffline(data, file.name)
+    const data = await fetch('/api/upload', { method: 'POST', headers: { 'X-Filename': encodeURIComponent(file.name), 'X-Company': encodeURIComponent(company) }, body: file, signal: controller.signal }).then(responseJSON)
+    renderOffline(data, file.name, company)
     feedback('Analysis ready. Review the candidates, then download the recording note.')
   } catch (error) { renderOfflineError(error.name === 'AbortError' ? 'The request timed out. Try a shorter recording.' : error.message) }
   finally { clearTimeout(timeout); button.disabled = false; button.textContent = 'Upload a recording →' }
@@ -441,14 +470,15 @@ function renderOfflineError(message) {
   showRecordingView(true)
   feedback(message, true)
 }
-function renderOffline(data, name) {
-  recordingText('recording-title', 'Recording review')
+function renderOffline(data, name, company) {
+  recordingText('recording-title', data.company || company || 'Recording review')
   recordingText('recording-sub', name + (data.language ? ' · ' + data.language.toUpperCase() : ''))
   recordingText('recording-source', (data.language || '').toUpperCase() || 'UPLOADED', 'offline-status')
   const body = recordingElement('offline-body')
   if (!body) throw new Error('Recording report panel is unavailable. Please reopen the page.')
   body.replaceChildren()
   const analysis = data.analysis || {}; const signals = analysis.signals || []; const questions = analysis.questions || []
+  const followups = analysis.followup_checks || []
   const review = signals.filter(s => s.escalation)
   const other = signals.filter(s => !s.escalation)
   const stats = $('recording-stats')
@@ -477,6 +507,11 @@ function renderOffline(data, name) {
     other.forEach((s, i) => node.append(recordingEvidenceRow(s, 'R-' + pad(review.length + i + 1))))
     body.append(node)
   }
+  if (followups.length) {
+    const node = section('Previous follow-up check')
+    followups.forEach(check => node.append(followupRow(check)))
+    body.append(node)
+  }
   if (!signals.length) body.append(el('p', 'empty', 'No candidates matched. This does not establish that the company has no risks. Check the transcript for missed context.'))
   if (questions.length) {
     const node = section('Suggested questions for the next conversation')
@@ -488,7 +523,7 @@ function renderOffline(data, name) {
   const bar = el('div', 'note-bar'); const download = el('button', 'export', 'Download recording note ↓')
   download.type = 'button'
   download.onclick = () => {
-    const text = [`# Recording review — ${name}`, '', `Analysis method: ${analysis.method || 'keyword'}`, analysis.notice || '', '', '## Candidates (not final grades)', ...signals.map(s => `\n- ${s.signal}\n  Quote: “${s.quote}”\n  Checklist review: ${s.escalation ? 'needed' : 'not flagged'}`), '', '## Suggested questions (not agreed actions)', ...questions.map(q => '- ' + q.question), '', '## Transcript', data.text || '', '', 'Generated by Second Listen. Verify quotes against the audio.']
+    const text = [`# Recording review — ${data.company || company || name}`, '', `Source file: ${name}`, `Analysis method: ${analysis.method || 'keyword'}`, analysis.notice || '', '', '## Previous follow-up check', ...followups.map(check => `\n- [${check.status}] ${check.task}${check.owner ? ` — ${check.owner}` : ''}${check.deadline ? `, due ${check.deadline}` : ''}${check.quote ? `\n  Quote: “${check.quote}”` : ''}${check.note ? `\n  Note: ${check.note}` : ''}`), '', '## Candidates (not final grades)', ...signals.map(s => `\n- ${s.signal}\n  Quote: “${s.quote}”\n  Checklist review: ${s.escalation ? 'needed' : 'not flagged'}`), '', '## Suggested questions (not agreed actions)', ...questions.map(q => '- ' + q.question), '', '## Transcript', data.text || '', '', 'Generated by Second Listen. Verify quotes against the audio.']
     downloadText(text.join('\n'), name.replace(/\.[^.]+$/, '') + '-review.md')
     feedback('Recording note downloaded.')
     clearCurrentAnalysis()
@@ -504,8 +539,7 @@ function renderOffline(data, name) {
 
 const recordingClose = recordingElement('recording-close', 'offline-close')
 if (recordingClose) recordingClose.onclick = () => {
-  document.body.classList.remove('recording-open')
-  showRecordingView(false)
+  clearCurrentAnalysis()
 }
 
 $('btn-stop').onclick = () => stop()
@@ -518,5 +552,7 @@ if (AGENT.preview) {
   $('btn').disabled = true; $('analyze-btn').disabled = true; $('mic').disabled = true
 }
 
-refreshLedger()
+// Do not restore the latest saved report on page load. The right pane is a
+// blank workspace until the user starts a debrief or uploads a recording.
+refreshLedger(false)
 refreshPrev()
