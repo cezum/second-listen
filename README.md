@@ -37,6 +37,8 @@ Prefer not to talk? **Analyze recording** uploads a pre-recorded debrief (Chines
 docs/system-prompt.md   the agent's playbook prompt (v0.4, evolving)
 docs/demo-script.md     the 45-second debrief monologue with buried signals
 docs/demo-script-zh.md  the same monologue in Chinese, for the comparison round
+docs/hackathon-demo-script-2min.md
+                        the 2-minute English submission video script
 docs/roadmap.md         build milestones for the hackathon month
 docs/live-test-checklist.md
                         one boot, three calls: everything that needs a voice,
