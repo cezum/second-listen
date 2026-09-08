@@ -27,7 +27,7 @@ Prefer not to talk? **Analyze recording** uploads a pre-recorded debrief (Chines
 
 ## Demo
 
-<a href="demo/SecondListen_demo_v7.mp4"><img src="slides/cover_16x9.png" width="480" alt="Watch the Second Listen demo"></a>
+<a href="https://github.com/cezum/second-listen/raw/main/demo/SecondListen_demo_v7.mp4"><img src="slides/cover_16x9.png" width="480" alt="Watch the Second Listen demo"></a>
 
 The 3:44 demo runs the real product end to end: a second check-in call that reopens last week's follow-ups one at a time, live evidence capture with the investor's own quotes, and an upload-mode analysis of a recording. Narration script: [docs/hackathon-demo-script-2min.md](docs/hackathon-demo-script-2min.md).
 
