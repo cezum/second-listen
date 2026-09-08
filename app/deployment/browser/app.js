@@ -442,13 +442,30 @@ async function addWorklet(ctx, code, name) {
 }
 
 async function fetchVoiceToken() {
-  const res = await fetch('/token', { cache: 'no-store', headers: { Accept: 'application/json' } })
-  const body = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error(body.error || 'Voice token service is unavailable. Please retry.')
-  if (typeof body.token !== 'string' || !body.token.trim()) {
-    throw new Error('Voice token was not returned. Please retry.')
+  const retryableStatuses = new Set([408, 429, 500, 502, 503, 504])
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const res = await fetch('/token', { cache: 'no-store', headers: { Accept: 'application/json' } })
+      const body = await res.json().catch(() => ({}))
+      if (res.ok) {
+        if (typeof body.token !== 'string' || !body.token.trim()) {
+          throw new Error('Voice token was not returned. Please retry.')
+        }
+        return body.token.trim()
+      }
+      const error = new Error(body.error || 'Voice token service is unavailable. Please retry.')
+      error.status = res.status
+      if (!retryableStatuses.has(res.status) || attempt === 2) throw error
+    } catch (error) {
+      // A transient browser/network failure has no Response status. Retry it
+      // alongside the retryable upstream statuses, but never retry a client
+      // rejection such as the server's cross-origin or auth response.
+      if (attempt === 2 || (error.name !== 'TypeError' && !retryableStatuses.has(error.status))) {
+        throw error
+      }
+    }
+    await new Promise(resolve => setTimeout(resolve, 700 * (attempt + 1)))
   }
-  return body.token.trim()
 }
 
 async function start() {
