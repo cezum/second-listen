@@ -1,9 +1,8 @@
 # Hackathon Demo Shot List
 
 Use this checklist with [`hackathon-demo-script-2min.md`](hackathon-demo-script-2min.md).
-v7 keeps v5's one-long-live-segment spine, drops the litigation follow-up
-to land at 3:44, and rebuilds the outro to mirror the intro's typewriter
-card so the video has a matching bookend.
+v7 keeps v5's one-long-live-segment spine and drops the litigation follow-up.
+v8 is the same cut with the three callouts rebuilt as anchored bubbles (3:42).
 
 ## Before recording
 
@@ -22,18 +21,18 @@ card so the video has a matching bookend.
 | Live debrief, full session (`Project 8`) | 3:38 | Unused; available as a fallback |
 | Two aborted takes | ~30s | Unused |
 
-## Final cut structure (v7)
+## Final cut structure (v8)
 
 | Time | Section | Audio | Callout |
 |---|---|---|---|
 | 0:00–0:17 | Intro A: typewriter card on beige (4 lines, sequential fade-in) | AI narration (NARR_A): problem statement, transcription is solved, judgment is not | — |
-| 0:17–0:42 | Intro B: entry screen (static, "two doors") | AI narration (NARR_B): playbook compiled into skills, what the partner does, what is about to happen | — |
-| 0:42–2:49 | Live part 1: trial3 [9.5, 135.8] (126.3 s) — natural pacing, no internal cuts. Walks through follow-ups #1, #2, #3. | Real audio. 3 Luke mutes in this segment. | (1) "Prior follow-ups, reopened" @ 0:43–0:53<br>(2) "Reminder set" @ 1:37–1:45<br>Persistent: "LIVE DEBRIEF · PROJECT 8 · SECOND CHECK-IN" bottom-left |
-| 2:49–3:18 | Live part 2: trial3 [157.7, 186.5] (28.8 s) — "Since all follow-ups are still in progress, let's move on" / "Was there anything else new..." / "I've set two reminders for you" | Real audio | (3) "Two reminders set" @ 3:02–3:14 |
-| 3:18–3:29 | Upload: Project 9 static report frame | AI narration (NARR_UPLOAD): same skills run on a recording — drop in, get the same list | — |
-| 3:29–3:44 | Outro: typewriter card on beige (5 lines + footer, sequential fade-in) | AI narration (NARR_OUT): everything is on the record, next week the partner opens with them, Second Listen | — |
+| 0:17–0:40 | Intro B: entry screen (static, "two doors") | AI narration (NARR_B): playbook compiled into skills, what the partner does, what is about to happen | — |
+| 0:40–2:45 | Live part 1: trial3 [9.5, 135.8] (126.3 s) — natural pacing, no internal cuts. Walks through follow-ups #1, #2, #3. | Real audio. 3 Luke mutes in this segment. | (1) bubble "Prior follow-ups, reopened" @ 0:41–0:51, tail on the follow-up list<br>(2) bubble "Reminder set" @ 1:35–1:43, tail on the reminder just filed<br>Persistent: "LIVE DEBRIEF · PROJECT 8 · SECOND CHECK-IN" bottom-left |
+| 2:45–3:14 | Live part 2: trial3 [157.7, 186.5] (28.8 s) — "Since all follow-ups are still in progress, let's move on" / "Was there anything else new..." / "I've set two reminders for you" | Real audio | (3) bubble "Two reminders set" @ 2:59–3:11, tail on the actions just created |
+| 3:14–3:26 | Upload: Project 9 static report frame | AI narration (NARR_UPLOAD): same skills run on a recording — drop in, get the same list | — |
+| 3:26–3:42 | Outro: typewriter card on beige (5 lines + footer, sequential fade-in) | AI narration (NARR_OUT): everything is on the record, next week the partner opens with them, Second Listen | — |
 
-Total: 225 s = 3:44.
+Total: 222 s = 3:42.
 
 ## Why the structure is what it is
 
@@ -72,23 +71,32 @@ Total: 225 s = 3:44.
   moments ("Investor · due next week", "Keep that reminder for next week
   underneath me") is still visible; redrawing it would obscure real
   product text.
-- Three on-screen callouts use `drawtext` (Georgia 26 px, dark text, beige
-  box) with `enable='between(t,start,end)'` in segment-local time.
+- Three on-screen callouts are bubbles, not text boxes: filled rounded shape
+  (`#2B2520`, the product's ink family — deliberately not the app red
+  `#a42b2f`, so a bubble beside the red "Export note" button never reads as
+  another control), cream Georgia 40 px, drop shadow, rounded corners, and a
+  tail. Each is rendered to a transparent PNG and overlaid with ffmpeg using
+  `enable='between(t,start,end)'` in segment-local time, with a 0.35 s alpha
+  fade in and out.
+- **Bubbles are anchored by the tail tip.** The position in the build script is
+  the point the tail lands on, so each bubble sits next to the thing it
+  describes rather than in the margin. Moving one is a single coordinate.
 - No music.
 
-## Total runtime is 3:44 — this is a tradeoff, not an oversight
+## Total runtime is 3:42 — this is a tradeoff, not an oversight
 
 - v5 was 3:57. v6 had a bug that let the live segment run 11 s over and
-  ended at 3:47. v7 fixes the bug and adds the closing-card narration, and
-  lands at 3:44.
+  ended at 3:47. v7 fixed the bug and added the closing-card narration
+  (3:44). v8 is the same cut with the callouts rebuilt as anchored bubbles,
+  and the narration re-timed to 3:42.
 - If a hard 3-minute cap is required, the next step is to drop the live
-  part 2 entirely (loses the "two reminders set" callout — not recommended)
+  part 2 entirely (loses the "two reminders set" bubble — not recommended)
   or to compress intro B / upload / outro by ~45 s combined.
-- If a fully uncut 4:01 version is preferred, set `TRIM_LITIGATION = False`
-  at the top of `build_demo_v7.py` and re-run.
-- v3 / v4 / v5 still exist on disk for shorter-length fallbacks.
+- If a fully uncut 3:58 version is preferred, set `TRIM_LITIGATION = False`
+  at the top of `build_demo_v8.py` and re-run.
+- v3 / v4 / v5 / v7 still exist on disk for shorter-length fallbacks.
 
-## Final quality check (verified on the finished v7 video)
+## Final quality check (verified on the finished v8 video)
 
 - Value proposition is on screen and spoken in the first 17 seconds
   (transcription is solved, judgment is not, playbook compiled into skills).
@@ -109,14 +117,22 @@ Total: 225 s = 3:44.
 - The transferable industries are listed on the closing card.
 - Intro and outro share the same visual grammar (beige / Georgia / line
   reveal cadence).
+- All three bubbles land on their subject (tail tip on the follow-up list,
+  on the reminder, and on the two new actions), using the product's ink
+  colour rather than the app red so none of them reads as a UI button.
+  Spot-checked in the finished file by pixel-sampling each bubble's target
+  box: 53–55% fill coverage inside the box, ~1–3% just outside it, and none
+  present outside their time windows.
 
 ## Build pipeline
 
-- Script: the v7 build script (kept locally with the source clips, not in this repo; Python 3.13 + edge-tts).
+- Script: the v8 build script (kept locally with the source clips, not in this repo; Python 3.13 + edge-tts).
 - 6 video segments (intro A, intro B, live part 1, live part 2, upload,
   outro), all forced 30 fps, video-only.
 - 5 audio segments (TTS for intro A/B/upload/outro, original trial3
   audio with 3 Luke mutes for the live section), joined by ffmpeg concat.
 - Final mux adds fade in / fade out.
 - One switch at the top of the script — `TRIM_LITIGATION` — toggles
-  between the 3:44 cut and the 4:01 uncut cut.
+  between the 3:42 cut and the 3:58 uncut cut.
+- Callout bubbles are rendered once per build (HTML -> headless-browser
+  screenshot -> transparent PNG) and reused across segments.
