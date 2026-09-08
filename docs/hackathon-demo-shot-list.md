@@ -1,10 +1,9 @@
 # Hackathon Demo Shot List
 
 Use this checklist with [`hackathon-demo-script-2min.md`](hackathon-demo-script-2min.md).
-The v5 cut is built around one long, uncut live debrief — the user's call
-that trial3's natural pacing is the strongest piece of evidence the product
-has, so it should run nearly in full. v3/v4's Live A + Live B + Closure
-construction was the wrong shape.
+v7 keeps v5's one-long-live-segment spine, drops the litigation follow-up
+to land at 3:44, and rebuilds the outro to mirror the intro's typewriter
+card so the video has a matching bookend.
 
 ## Before recording
 
@@ -18,40 +17,41 @@ construction was the wrong shape.
 
 | Source | Length | Used for |
 |---|---|---|
-| Live debrief, next-day session (`Project 8`) | 3:09 | Live [9.5, 186.5] (177 s) — played almost in full |
+| Live debrief, next-day session (`Project 8`) | 3:09 | Live part 1 [9.5, 135.8] (126.3 s) + Live part 2 [157.7, 186.5] (28.8 s) |
 | Upload analysis (`Project 9`) | 1:05 | Upload frame (static, 11.7 s) |
-| Live debrief, full session (`Project 8`) | 3:38 | Unused in v5; available as a fallback |
+| Live debrief, full session (`Project 8`) | 3:38 | Unused; available as a fallback |
 | Two aborted takes | ~30s | Unused |
 
-## Final cut structure (v5)
+## Final cut structure (v7)
 
 | Time | Section | Audio | Callout |
 |---|---|---|---|
 | 0:00–0:17 | Intro A: typewriter card on beige (4 lines, sequential fade-in) | AI narration (NARR_A): problem statement, transcription is solved, judgment is not | — |
 | 0:17–0:42 | Intro B: entry screen (static, "two doors") | AI narration (NARR_B): playbook compiled into skills, what the partner does, what is about to happen | — |
-| 0:42–2:59 | Live: uncut trial3 [9.5, 186.5] with original audio, natural pauses preserved | Real audio (investor + agent TTS); 'Luke' name cue muted | (1) "Prior follow-ups, reopened" @ 0:43–0:53<br>(2) "Reminder set" @ 1:37–1:45<br>(3) "Two reminders set" @ 3:24–3:36<br>Persistent: "LIVE DEBRIEF · PROJECT 8 · SECOND CHECK-IN" bottom-left |
-| 2:59–3:51 | Upload: Project 9 static report frame | AI narration (NARR_UPLOAD): same skills run on a recording — drop in, get the same list | — |
-| 3:51–3:57 | Closing card | Silent | — |
+| 0:42–2:49 | Live part 1: trial3 [9.5, 135.8] (126.3 s) — natural pacing, no internal cuts. Walks through follow-ups #1, #2, #3. | Real audio. 3 Luke mutes in this segment. | (1) "Prior follow-ups, reopened" @ 0:43–0:53<br>(2) "Reminder set" @ 1:37–1:45<br>Persistent: "LIVE DEBRIEF · PROJECT 8 · SECOND CHECK-IN" bottom-left |
+| 2:49–3:18 | Live part 2: trial3 [157.7, 186.5] (28.8 s) — "Since all follow-ups are still in progress, let's move on" / "Was there anything else new..." / "I've set two reminders for you" | Real audio | (3) "Two reminders set" @ 3:02–3:14 |
+| 3:18–3:29 | Upload: Project 9 static report frame | AI narration (NARR_UPLOAD): same skills run on a recording — drop in, get the same list | — |
+| 3:29–3:44 | Outro: typewriter card on beige (5 lines + footer, sequential fade-in) | AI narration (NARR_OUT): everything is on the record, next week the partner opens with them, Second Listen | — |
 
-Total: 237 s = 3:57.
+Total: 225 s = 3:44.
 
 ## Why the structure is what it is
 
-- **No Live A / Live B split.** v3 used trial (`Project 8`, full session) for the
-  intro to live dynamics and trial3 (next-day) for the follow-up closure.
-  Stitching three segments together reads as "edited highlights" — busy, no
-  single thread. v5 uses trial3 only. The whole second check-in is one
-  continuous experience, and the lead-in narration already told the viewer what
-  it is.
-- **No transition card.** The upload mode is mentioned once, in one sentence,
-  over one static frame. It is not the story; it does not get a transition.
-- **Live segment runs at 1.0x, pauses preserved.** The user explicitly asked
-  to keep the natural rhythm. The first 9.5 s of dead air and the tail after
-  186.5 s are trimmed; everything in between is original pace, including the
-  5-second waits for "I'm sorry, I didn't catch that" type re-prompts.
-- **Three on-screen callouts instead of two.** v3/v4 had two; v5 adds
-  "Prior follow-ups, reopened" at the very top of the live segment so the
-  viewer knows what they is watching in the first 10 seconds.
+- **Live is the spine.** Both halves of the live section are trial3; nothing
+  else is mixed in. v3/v4's multi-segment stitching read as "edited
+  highlights" and was rejected. The litigation follow-up in the middle of
+  trial3 ("no new developments" / "nothing further right now") is the only
+  cut — it is dead air that the agent follows with "Since all follow-ups
+  are still in progress, let's move on", so the visual cut is invisible.
+- **Three Luke mutes in a single pause.** The agent addresses the investor by
+  name twice while waiting for an answer on the first follow-up, and the
+  investor's discarded half-answer falls in the same pause. All three are
+  muted because none carries information; the agent says "I'm sorry, I
+  didn't catch that" anyway.
+- **Outro mirrors intro.** Same beige ground, same Georgia headline + italic
+  body, lines revealed at 0.4 / 3.0 / 6.2 / 9.6 s. The intro names the gap
+  ("that is not solved"); the outro names the artifact ("everything is on
+  the record"). Together they are a single argument.
 - **Persistent corner label.** A small `LIVE DEBRIEF · PROJECT 8 · SECOND
   CHECK-IN` tag at the bottom-left keeps the viewer oriented through the
   long static-looking section.
@@ -63,56 +63,60 @@ Total: 237 s = 3:57.
 - The live section runs at 1.0x — no speed ramps.
 - Audio is the original recorded conversation in the live section (the
   investor's voice + agent TTS). AI narration is used only for the intro
-  A/B, the upload, and is silent on the closing card.
-- Only the leading and trailing dead air of trial3 is trimmed (absolute
-  [0, 9.5] and [186.5, end]). All inner pauses are preserved.
-- The 'Luke' name cue (trial3 absolute [23.5, 23.94] s — the agent's way of
-  addressing the investor at the start of the first follow-up) is muted.
-  Audio only; the product UI's transcript still shows the name. That is the
-  product's own rendering and cannot be removed without drawbox masking,
-  which the user has not asked for.
+  A/B, the upload, and the outro.
+- The litigation follow-up (trial3 abs [135.8, 157.7]) is dropped; the two
+  halves are stitched at agent prompts followed by silence, so the cut is
+  invisible.
+- The three Luke mutes (trial3 abs [23.48, 23.95], [29.02, 29.62],
+  [31.18, 31.82]) are audio-only. The product's own UI transcript of these
+  moments ("Investor · due next week", "Keep that reminder for next week
+  underneath me") is still visible; redrawing it would obscure real
+  product text.
 - Three on-screen callouts use `drawtext` (Georgia 26 px, dark text, beige
   box) with `enable='between(t,start,end)'` in segment-local time.
 - No music.
 
-## Total runtime is 3:57 — this is a tradeoff, not an oversight
+## Total runtime is 3:44 — this is a tradeoff, not an oversight
 
-- v3 was 2:25. The user's feedback was "feels edited, busy, no flow".
-  v4 went to 2:44. v5 goes to 3:57 because the live segment is now 177 s.
-- This is the cost of "play trial3 complete". If the submission has a hard
-  2- or 3-minute cap, the v5 cut will not fit; the next step is to trim the
-  middle of trial3 (e.g. drop the litigation follow-up around absolute
-  135.8–157.7 s — "no new developments" / "nothing further right now" —
-  and stitch the two halves). That would cut ~22 s, landing at 3:35.
-  Cutting more (e.g. ending live after the second follow-up) loses the
-  "two reminders set" callout and is not recommended.
-- v3 still exists at `SecondListen_demo_v3.mp4` (2:25, narrated-heavy) for
-  situations where 3 minutes is the absolute ceiling.
+- v5 was 3:57. v6 had a bug that let the live segment run 11 s over and
+  ended at 3:47. v7 fixes the bug and adds the closing-card narration, and
+  lands at 3:44.
+- If a hard 3-minute cap is required, the next step is to drop the live
+  part 2 entirely (loses the "two reminders set" callout — not recommended)
+  or to compress intro B / upload / outro by ~45 s combined.
+- If a fully uncut 4:01 version is preferred, set `TRIM_LITIGATION = False`
+  at the top of `build_demo_v7.py` and re-run.
+- v3 / v4 / v5 still exist on disk for shorter-length fallbacks.
 
-## Final quality check (verified on the finished v5 video)
+## Final quality check (verified on the finished v7 video)
 
 - Value proposition is on screen and spoken in the first 17 seconds
-  (transcription is solved, judgment is not, playbook is compiled into skills).
-- Live segment runs continuously for 177 s with no internal cuts.
+  (transcription is solved, judgment is not, playbook compiled into skills).
+- Live segment runs continuously for 155 s (in two parts, stitch invisible).
 - The first risk never appears before its supporting sentence is spoken.
 - The words `Project 8` and `fictional` are visible and spoken.
 - The video includes a real live result and a real upload result.
 - The agreed actions are created on camera with owner, due, and agreed-at
-  meta visible (the core "voice-in, quotes-kept" promise).
+  meta visible.
 - The follow-up carryover is on camera: the live segment's "Previous
   follow-ups" panel is exactly the agreed actions the next-day session
   needs to close.
-- The 'Luke' name cue is inaudible. The product's own transcript of it
-  remains visible on screen (product rendering, not editable).
+- All three "Luke" name cues and the investor's half-answer are inaudible.
+  The product's own UI transcript of them is still visible (product
+  rendering, not editable).
 - No API key, real recording, local path, browser chrome, or private data
   appears.
 - The transferable industries are listed on the closing card.
+- Intro and outro share the same visual grammar (beige / Georgia / line
+  reveal cadence).
 
 ## Build pipeline
 
-- Script: `私有库/_demo_build/build_demo_v5.py` (Python 3.13 + edge-tts).
-- 5 video segments (intro A text card, intro B entry screen, live trial3,
-  upload Project 9 frame, outro card), all forced 30 fps, video-only.
-- 5 audio segments (TTS for intro A/B/upload, original trial3 audio with
-  'Luke' muted for live, silence for outro), joined by ffmpeg concat.
+- Script: `私有库/_demo_build/build_demo_v7.py` (Python 3.13 + edge-tts).
+- 6 video segments (intro A, intro B, live part 1, live part 2, upload,
+  outro), all forced 30 fps, video-only.
+- 5 audio segments (TTS for intro A/B/upload/outro, original trial3
+  audio with 3 Luke mutes for the live section), joined by ffmpeg concat.
 - Final mux adds fade in / fade out.
+- One switch at the top of the script — `TRIM_LITIGATION` — toggles
+  between the 3:44 cut and the 4:01 uncut cut.

@@ -88,19 +88,24 @@ Core product complete: playbook-driven live debrief (evidence, ledger,
 escalation, action items), file-upload mode for recorded/Chinese debriefs,
 downloadable follow-up notes, and cross-debrief commitment checks all
 implemented and verified (Round 2's check is verified at the publish/greeting
-layer; a full voice pass is pending). Demo video v5 is the latest cut and
+layer; a full voice pass is pending). Demo video v7 is the latest cut and
 its narration script is in [docs/hackathon-demo-script-2min.md](docs/hackathon-demo-script-2min.md):
-3:57 submission built around one uncut live debrief segment (177 s,
-natural pacing, original audio in the live section, AI narration only for the
-intro A/B and the upload sentence). Intro opens with a typewriter card
-stating the value proposition — "transcription is solved, judgment is not;
-playbook is compiled into skills" — and ends by naming what the viewer is
-about to watch. The 'Luke' name cue in the live audio is muted. Three
-on-screen callouts (`Prior follow-ups, reopened` / `Reminder set` /
-`Two reminders set`) plus a persistent bottom-left `LIVE DEBRIEF · PROJECT 8 ·
-SECOND CHECK-IN` tag orient the viewer through the long live segment.
-v1/v2/v3/v4 cuts still exist on disk as `SecondListen_demo_v{1,2,3,4}.mp4`
-for length-constrained fallbacks (2:25 / 1:44 / 2:25 / 2:44).
+3:44 submission. v5's spine — one long live debrief of trial3 with original
+audio and natural pacing — is kept, with the litigation follow-up
+("no new developments" / "nothing further right now") trimmed to land under
+3:45. The outro is rebuilt as a typewriter card that mirrors the intro's
+grammar (beige ground, Georgia headline + italic body, lines revealed
+sequentially). Three short audio regions in the live section are muted: two
+"Luke" name cues and the investor's discarded half-answer, all in the same
+agent-prompting pause around the first follow-up (trial3 abs [23.48, 23.95],
+[29.02, 29.62], [31.18, 31.82]). Three on-screen callouts (`Prior follow-ups,
+reopened` / `Reminder set` / `Two reminders set`) plus a persistent
+bottom-left `LIVE DEBRIEF · PROJECT 8 · SECOND CHECK-IN` tag orient the
+viewer through the long live segment. v1/v2/v3/v4/v5/v6 cuts still exist on
+disk as `SecondListen_demo_v{1,2,3,4,5,6}.mp4` for length-constrained
+fallbacks (2:25 / 1:44 / 2:25 / 2:44 / 3:57 / 3:47). The v7 build script
+(`_demo_build/build_demo_v7.py`) has a one-line switch (`TRIM_LITIGATION`)
+to produce a fully uncut 4:01 cut if needed.
 
 ## License
 
