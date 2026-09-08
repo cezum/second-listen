@@ -1,0 +1,23 @@
+name: checks
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  syntax-and-regressions:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Python syntax
+        run: python -m compileall -q .
+      - name: Agent JSONC parsing and regression tests
+        run: python -m unittest discover -s tests -v
+      - name: Browser JavaScript syntax
+        run: node --check deployment/browser/app.js && node --check deployment/browser/workspace.js

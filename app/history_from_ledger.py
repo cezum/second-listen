@@ -31,15 +31,22 @@ import sys
 from pathlib import Path
 from typing import Any, Optional
 
-from lib import atomic_write_text
+from lib import atomic_write_text, load_env
 
 ROOT = Path(__file__).resolve().parent
-LEDGER = ROOT / "data" / "ledger.json"
-HISTORY_DIR = ROOT / "data" / "history"
+LEDGER = Path(os.environ.get("DATA_DIR") or ROOT / "data") / "ledger.json"
+HISTORY_DIR = Path(os.environ.get("DATA_DIR") or ROOT / "data") / "history"
 _WEAK_ACTION_VALUES = {
     "", "tbd", "unknown", "unspecified", "not specified",
     "not set", "as soon as possible", "to be confirmed",
 }
+
+
+def configure_paths() -> None:
+    global LEDGER, HISTORY_DIR
+    data_dir = Path(os.environ.get("DATA_DIR") or ROOT / "data")
+    LEDGER = data_dir / "ledger.json"
+    HISTORY_DIR = data_dir / "history"
 
 
 def normalize_action_task(task: str) -> str:
@@ -74,7 +81,7 @@ def load_ledger() -> dict:
         return {"sessions": {}}
 
 
-def pick_session(ledger: dict, session_id: str) -> tuple[str, dict]:
+def pick_session(ledger: dict, session_id: str, company: str = "") -> tuple[str, dict]:
     """Return (session_id, session). With no session_id, the most recent one
     by started_at; sessions missing started_at sort last, and the key breaks
     the tie so the choice is stable between runs."""
@@ -90,8 +97,18 @@ def pick_session(ledger: dict, session_id: str) -> tuple[str, dict]:
                 f"session {session_id!r} is not in the ledger. Known: "
                 + ", ".join(sorted(sessions))
             )
-        return session_id, sessions[session_id]
-    chosen = max(sessions.items(),
+        session = sessions[session_id]
+        if company and slugify(session.get("company", "")) != slugify(company):
+            raise SystemExit(f"session {session_id!r} belongs to "
+                             f"{session.get('company', '')!r}, not {company!r}")
+        return session_id, session
+    candidates = list(sessions.items())
+    if company:
+        candidates = [(sid, session) for sid, session in candidates
+                      if slugify(session.get("company", "")) == slugify(company)]
+    if not candidates:
+        raise SystemExit(f"no ledger session found for company {company!r}")
+    chosen = max(candidates,
                  key=lambda kv: (kv[1].get("started_at") or "", kv[0]))
     return chosen
 
@@ -136,12 +153,14 @@ def build_history(session: dict, company: str) -> dict:
 
 
 def main() -> int:
+    load_env()
+    configure_paths()
     company = os.environ.get("COMPANY", "").strip() or "Project 8"
     want_session = os.environ.get("SESSION", "").strip()
     force = os.environ.get("FORCE") == "1"
     dry_run = os.environ.get("DRY_RUN") == "1"
 
-    session_id, session = pick_session(load_ledger(), want_session)
+    session_id, session = pick_session(load_ledger(), want_session, company)
     history = build_history(session, company)
 
     commitments = history["commitments"]

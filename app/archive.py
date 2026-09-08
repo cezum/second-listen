@@ -10,6 +10,8 @@ outside any public repo if the recordings are private.
 """
 
 import json
+import os
+import tempfile
 import threading
 import time
 import urllib.request
@@ -22,8 +24,12 @@ DEFAULT_TRIALS_DIR = Path(__file__).resolve().parent / "data" / "trials"
 
 
 def _download(url: str, dest: Path) -> None:
-    with urllib.request.urlopen(url) as res, dest.open("wb") as f:
-        f.write(res.read())
+    with urllib.request.urlopen(url, timeout=120) as res, dest.open("wb") as f:
+        while True:
+            chunk = res.read(1024 * 1024)
+            if not chunk:
+                break
+            f.write(chunk)
 
 
 def _write_transcript(session_dir: Path, timeline: dict) -> None:
@@ -61,7 +67,9 @@ def archive_session(session_id: str, trials_dir: Optional[Path] = None) -> dict:
     ok:True once saved (or skipped because it already exists)."""
     trials_dir = Path(trials_dir) if trials_dir else DEFAULT_TRIALS_DIR
     session_dir = trials_dir / session_id
-    if session_dir.exists():
+    required_files = {"timeline.json", "metadata.json", "audio.ogg", "summary.json", "transcript.md"}
+    if session_dir.is_dir() and required_files.issubset(
+            {path.name for path in session_dir.iterdir()}):
         return {"ok": True, "skipped": True}
 
     detail = aai(f"/sessions/{session_id}")
@@ -74,29 +82,42 @@ def archive_session(session_id: str, trials_dir: Optional[Path] = None) -> dict:
     if not artifacts:
         return {"ok": False, "reason": "artifacts not ready"}
 
-    session_dir.mkdir(parents=True, exist_ok=True)
-    timeline = {}
-    for kind, filename in (("timeline", "timeline.json"),
-                           ("metadata", "metadata.json"),
-                           ("audio", "audio.ogg")):
-        url = artifacts.get(kind)
-        if url:
-            _download(url, session_dir / filename)
+    trials_dir.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix=f".{session_id}.", dir=trials_dir) as staging:
+        staging_dir = Path(staging)
+        timeline = {}
+        for kind, filename in (("timeline", "timeline.json"),
+                               ("metadata", "metadata.json"),
+                               ("audio", "audio.ogg")):
+            url = artifacts.get(kind)
+            if not url:
+                continue
+            _download(url, staging_dir / filename)
             if kind == "timeline":
-                timeline = json.loads((session_dir / filename).read_text(encoding="utf-8"))
+                timeline = json.loads((staging_dir / filename).read_text(encoding="utf-8"))
 
-    _write_transcript(session_dir, timeline)
-    summary = {
-        "id": session_id,
-        "agent_id": detail.get("agent_id"),
-        "status": detail.get("status"),
-        "created_at": detail.get("created_at"),
-        "ended_at": detail.get("ended_at"),
-        "duration_seconds": detail.get("duration_seconds"),
-        "public_close_reason": detail.get("public_close_reason"),
-    }
-    (session_dir / "summary.json").write_text(
-        json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
+        if not {"timeline", "metadata", "audio"}.issubset(artifacts):
+            return {"ok": False, "reason": "required artifacts missing"}
+        _write_transcript(staging_dir, timeline)
+        summary = {
+            "id": session_id,
+            "agent_id": detail.get("agent_id"),
+            "status": detail.get("status"),
+            "created_at": detail.get("created_at"),
+            "ended_at": detail.get("ended_at"),
+            "duration_seconds": detail.get("duration_seconds"),
+            "public_close_reason": detail.get("public_close_reason"),
+        }
+        (staging_dir / "summary.json").write_text(
+            json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
+        if session_dir.exists():
+            # A prior interrupted run may have left a partial directory. It is
+            # safe to replace only after the staging directory is complete.
+            for child in session_dir.iterdir():
+                if child.is_file():
+                    child.unlink()
+            session_dir.rmdir()
+        os.replace(staging_dir, session_dir)
     _update_index(trials_dir, detail)
     return {"ok": True, "session_id": session_id}
 

@@ -454,6 +454,7 @@ async function fetchVoiceToken() {
         return body.token.trim()
       }
       const error = new Error(body.error || 'Voice token service is unavailable. Please retry.')
+      error.code = body.code
       error.status = res.status
       if (!retryableStatuses.has(res.status) || attempt === 2) throw error
     } catch (error) {

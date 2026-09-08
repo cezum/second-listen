@@ -285,6 +285,11 @@ def _validated_analysis(value: object, transcript: str, history: dict = None) ->
     if not isinstance(raw_checks, list):
         raise ValueError("followup_checks must be a list")
     followup_checks = []
+    commitment_keys = {
+        re.sub(r"[^a-z0-9\u4e00-\u9fff]+", "", str(item.get("task") or "").casefold()): item
+        for item in commitments
+        if str(item.get("task") or "").strip()
+    }
     for check in raw_checks:
         if (not isinstance(check, dict)
                 or not isinstance(check.get("task"), str)
@@ -294,6 +299,12 @@ def _validated_analysis(value: object, transcript: str, history: dict = None) ->
                 or not isinstance(check.get("note", ""), str)
                 or (check.get("quote") and check["quote"] not in transcript)):
             raise ValueError("malformed follow-up check")
+        task_key = re.sub(r"[^a-z0-9\u4e00-\u9fff]+", "",
+                          check["task"].casefold())
+        if commitments and task_key not in commitment_keys:
+            raise ValueError("follow-up does not match prior commitment")
+        if check["status"] == "completed" and not check.get("quote", "").strip():
+            raise ValueError("completed follow-up needs transcript evidence")
         followup_checks.append({
             "task": check["task"].strip(),
             "owner": str(check.get("owner") or "").strip(),

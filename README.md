@@ -25,6 +25,12 @@ Second Listen covers the second channel: the gap between "the conversation happe
 
 Prefer not to talk? **Analyze recording** uploads a pre-recorded debrief (Chinese works too): Universal-2 transcribes it and the same playbook returns a signal list plus follow-up questions — no live dialogue needed.
 
+## 本地演示（Windows）
+
+双击项目根目录的 [`启动SecondListen.bat`](启动SecondListen.bat)，脚本会自动启动服务并打开 `http://localhost:3000`。如果服务已经运行，重复双击只会打开页面，不会再启动第二个服务。
+
+演示阶段使用本地文件保存记录，不接数据库；如果 Python 服务窗口被关闭，需要再次双击这个启动文件。
+
 ## Tech
 
 - [AssemblyAI Voice Agent API](https://www.assemblyai.com/docs/voice-agents/voice-agent-api) — one WebSocket for STT + LLM + TTS, turn detection, barge-in, tool calling

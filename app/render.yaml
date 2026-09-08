@@ -27,3 +27,10 @@ services:
       # name on later restarts.
       - key: AGENT_ID
         value: ''
+      # All ledger, history, archive and cache files live below this path.
+      # Attach a persistent disk or replace this with an external store before
+      # treating the hosted workspace as durable.
+      - key: DATA_DIR
+        value: /var/data
+      - key: REQUIRE_HTTPS
+        value: '1'

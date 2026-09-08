@@ -49,8 +49,10 @@ The session message contains only `{ agent_id }`. Prompt, voice, tools and turn 
 | `AGENT` | Which file in `agents/` to serve. Defaults to `minimal`. |
 | `AGENT_ID_<NAME>` | The id `python publish.py` saved for that file. Connected to as it is. |
 | `AGENT_ID` | Overrides the per-file keys, for serving one specific agent. |
-| `PORT` | Defaults to 3000, moves to the next free port if taken. |
+| `PORT` | Defaults to 3000. If the port is occupied, startup fails with the exact port and a process-conflict message. |
 | `HOST` | Defaults to `127.0.0.1`. Set `0.0.0.0` only when a container platform routes to the port — the ledger and note endpoints have no auth. |
+| `DATA_DIR` | Root for ledger, history, archives and transcript cache. Use a mounted persistent path for durable hosted data. |
+| `REQUIRE_HTTPS` | Set to `1` for remote deployments; requests without HTTPS forwarding are rejected. |
 
 ## Editing the page
 
@@ -61,5 +63,9 @@ The server is [server.py](server.py), the page is [index.html](index.html) and t
 `render.yaml` is configured for one-click deploys. Render prompts for `ASSEMBLYAI_API_KEY` during Blueprint creation, since that is the only variable marked `sync: false`, and sets `PORT` itself. `HOST` is preset to `0.0.0.0` in the blueprint — containers must listen on all interfaces — while local runs stay on loopback. `AGENT` and `AGENT_ID` arrive with defaults and are editable under Environment on the service.
 
 With no id set the service publishes `AGENT` on boot and updates the agent of that name on later restarts, so restarts do not pile up duplicate agents. Setting `AGENT_ID` to the id from your `.env` is still better: the deployment then serves the same agent you tested locally.
+
+The default `app/data/` directory is local to the process. A hosted deployment
+must mount durable storage or use an external data store if ledger history,
+follow-up status and archived recordings must survive restarts.
 
 Anyone with the URL can start sessions billed to your key.

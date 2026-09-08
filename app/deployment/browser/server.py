@@ -14,6 +14,7 @@ import math
 import os
 import re
 import sys
+import tempfile
 import threading
 import time
 from datetime import datetime, timezone
@@ -31,10 +32,11 @@ import history
 from history_from_ledger import build_history, merge_action_fields, normalize_action_task, slugify
 from note import build_note
 
-LEDGER = HERE.parents[1] / 'data' / 'ledger.json'
-GATE_LOG = HERE.parents[1] / 'data' / 'gate_log.json'
-TRIALS_DIR = Path(os.environ.get('TRIALS_DIR') or DEFAULT_TRIALS_DIR)
-TRANSCRIPT_CACHE = Path(os.environ.get('TRANSCRIPT_CACHE_DIR') or HERE.parents[1] / 'data' / 'transcript_cache')
+DEFAULT_DATA_DIR = HERE.parents[1] / 'data'
+LEDGER = DEFAULT_DATA_DIR / 'ledger.json'
+GATE_LOG = DEFAULT_DATA_DIR / 'gate_log.json'
+TRIALS_DIR = Path(os.environ.get('TRIALS_DIR') or DEFAULT_DATA_DIR / 'trials')
+TRANSCRIPT_CACHE = Path(os.environ.get('TRANSCRIPT_CACHE_DIR') or DEFAULT_DATA_DIR / 'transcript_cache')
 LEDGER_LOCK = threading.Lock()
 UPLOAD_SLOTS = threading.BoundedSemaphore(2)
 AGENT = None
@@ -45,6 +47,9 @@ TOKEN_EXPIRES_IN_SECONDS = 60
 
 class TokenError(Exception):
     """A safe, user-facing failure from the temporary-token proxy."""
+    def __init__(self, message: str, code: str = 'token_unavailable'):
+        super().__init__(message)
+        self.code = code
 
 
 def debug_log(*args):
@@ -100,16 +105,27 @@ def mint_token():
                 time.sleep(0.4)
                 continue
             debug_log('temporary voice token request failed')
-            raise TokenError('Voice token service is unavailable. Please retry.') from err
+            if isinstance(err, ApiError) and err.status in (401, 403):
+                raise TokenError('AssemblyAI rejected the API key. Check app/.env.', 'api_key_rejected') from err
+            if isinstance(err, ApiError) and err.status == 429:
+                raise TokenError('AssemblyAI token service is rate limited. Please wait and retry.', 'rate_limited') from err
+            if isinstance(err, ApiError) and err.status >= 500:
+                raise TokenError('AssemblyAI token service is unavailable. Please retry.', 'upstream_unavailable') from err
+            raise TokenError('Could not reach AssemblyAI token service. Check the network and retry.', 'network_error') from err
     token = payload.get('token') if isinstance(payload, dict) else None
     if not isinstance(token, str) or not token.strip():
         debug_log('temporary voice token response did not contain a token')
-        raise TokenError('Voice token service returned no usable token. Please retry.')
+        raise TokenError('AssemblyAI returned no usable voice token. Please retry.', 'invalid_token_response')
     return {'token': token.strip(), 'expires_in_seconds': TOKEN_EXPIRES_IN_SECONDS}
 
 
 def read_ledger():
-    value = read_json(LEDGER, {'sessions': {}})
+    if not LEDGER.exists():
+        return {'sessions': {}}
+    try:
+        value = json.loads(LEDGER.read_text(encoding='utf-8'))
+    except (OSError, ValueError) as err:
+        raise ValueError('The ledger is damaged. Restore its backup before recording new evidence.') from err
     if not isinstance(value, dict) or not isinstance(value.get('sessions'), dict):
         raise ValueError('The ledger is damaged. Restore its backup before recording new evidence.')
     return value
@@ -188,6 +204,10 @@ class Handler(BaseHTTPRequestHandler):
                 or (origin and urlsplit(origin).netloc != self.headers.get('Host'))):
             self._json(403, {'error': 'Cross-origin requests are not allowed'})
             return False
+        if os.environ.get('REQUIRE_HTTPS') == '1' and self.headers.get('Host', '').split(':')[0] not in ('127.0.0.1', 'localhost', '::1'):
+            if self.headers.get('X-Forwarded-Proto', '').lower() != 'https':
+                self._json(400, {'error': 'HTTPS is required for remote workspaces'})
+                return False
         password = os.environ.get('APP_PASSWORD', '')
         if password:
             try:
@@ -217,6 +237,31 @@ class Handler(BaseHTTPRequestHandler):
         if not isinstance(value, dict):
             raise ValueError('JSON body must be an object')
         return value
+
+    def _body_to_file(self, limit=50 * 1024 * 1024):
+        if self.headers.get('Transfer-Encoding'):
+            raise ValueError('Chunked requests are not supported')
+        length = int(self.headers.get('Content-Length', 0))
+        if not 0 < length <= limit:
+            raise ValueError('Empty or oversized request')
+        digest = hashlib.sha256()
+        handle = tempfile.NamedTemporaryFile(prefix='.second-listen-upload-', delete=False)
+        path = Path(handle.name)
+        try:
+            remaining = length
+            while remaining:
+                chunk = self.rfile.read(min(1024 * 1024, remaining))
+                if not chunk:
+                    raise ValueError('Incomplete request body')
+                handle.write(chunk)
+                digest.update(chunk)
+                remaining -= len(chunk)
+            handle.close()
+            return path, digest.hexdigest()
+        except Exception:
+            handle.close()
+            path.unlink(missing_ok=True)
+            raise
 
     def do_GET(self):
         path = urlsplit(self.path).path
@@ -270,7 +315,7 @@ class Handler(BaseHTTPRequestHandler):
             else:
                 self._json(404, {'error': 'Not found'})
         except TokenError as err:
-            self._json(502, {'error': str(err)})
+            self._json(502, {'error': str(err), 'code': err.code})
         except ApiError:
             # Do not echo upstream bodies: they are not useful to the browser
             # and must never become a path for credential leakage.
@@ -293,24 +338,27 @@ class Handler(BaseHTTPRequestHandler):
                     self._json(429, {'error': 'Two recordings are already processing. Try again shortly.'})
                     return
                 try:
-                    audio = self._body(50 * 1024 * 1024, raw=True)
                     filename = unquote(self.headers.get('X-Filename') or 'recording.ogg')
                     if Path(filename).suffix.lower() not in transcribe._MIME:
                         raise ValueError('Unsupported audio format')
+                    audio_path, audio_hash = self._body_to_file()
                     company = company_name(unquote(self.headers.get('X-Company') or ''))
                     prior_history = history.load_history(company) or {}
-                    cache_file = TRANSCRIPT_CACHE / (hashlib.sha256(audio).hexdigest() + '.json')
-                    result = read_json(cache_file)
-                    cached = isinstance(result, dict) and isinstance(result.get('text'), str)
-                    if not cached:
-                        result = transcribe.transcribe(audio, filename)
-                        atomic_write_text(cache_file, json.dumps(result, ensure_ascii=False))
-                    result = copy.deepcopy(result)
-                    result['cached'] = cached
-                    result['company'] = company
-                    result['analysis'] = analyze.analyze_transcript(
-                        result.get('text', ''), result.get('language'), prior_history)
-                    self._json(200, result)
+                    try:
+                        cache_file = TRANSCRIPT_CACHE / (audio_hash + '.json')
+                        result = read_json(cache_file)
+                        cached = isinstance(result, dict) and isinstance(result.get('text'), str)
+                        if not cached:
+                            result = transcribe.transcribe_file(audio_path, filename)
+                            atomic_write_text(cache_file, json.dumps(result, ensure_ascii=False))
+                        result = copy.deepcopy(result)
+                        result['cached'] = cached
+                        result['company'] = company
+                        result['analysis'] = analyze.analyze_transcript(
+                            result.get('text', ''), result.get('language'), prior_history)
+                        self._json(200, result)
+                    finally:
+                        audio_path.unlink(missing_ok=True)
                 finally:
                     UPLOAD_SLOTS.release()
                 return
@@ -345,6 +393,26 @@ class Handler(BaseHTTPRequestHandler):
                         raise ValueError('A newer debrief is already saved for this company')
                     atomic_write_text(dest, json.dumps(value, ensure_ascii=False, indent=2))
                 self._json(200, {'ok': True, 'commitments': len(value['commitments'])})
+            elif path == '/api/history/status':
+                company = company_name(body.get('company'))
+                task = body.get('task')
+                status = body.get('status')
+                if not isinstance(task, str) or not task.strip():
+                    raise ValueError('A follow-up task is required')
+                if status not in ('completed', 'open'):
+                    raise ValueError('Status must be completed or open')
+                path = history.HISTORY_DIR / (slugify(company) + '.json')
+                value = read_json(path)
+                if not isinstance(value, dict) or not isinstance(value.get('commitments'), list):
+                    raise ValueError('History file is missing or damaged')
+                match = next((item for item in value['commitments']
+                              if normalize_action_task(item.get('task', ''))
+                              == normalize_action_task(task)), None)
+                if match is None:
+                    raise ValueError('Follow-up not found for this company')
+                match['status'] = status
+                atomic_write_text(path, json.dumps(value, ensure_ascii=False, indent=2))
+                self._json(200, {'ok': True, 'status': status})
             elif path == '/api/ledger':
                 event = validate_event(body)
                 company = company_name(body.get('company'))
@@ -393,7 +461,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main():
-    global AGENT, PAGE, TRIALS_DIR, TRANSCRIPT_CACHE
+    global AGENT, PAGE, LEDGER, GATE_LOG, TRIALS_DIR, TRANSCRIPT_CACHE
     load_env()
     host = os.environ.get('HOST', '127.0.0.1')
     if host not in ('127.0.0.1', 'localhost', '::1') and not demo_only() and not os.environ.get('APP_PASSWORD'):
@@ -402,6 +470,12 @@ def main():
     mode = os.environ.get('MODE', 'inline')
     if not demo_only():
         required('ASSEMBLYAI_API_KEY', 'set it in app/.env')
+    data_dir = Path(os.environ.get('DATA_DIR') or DEFAULT_DATA_DIR)
+    LEDGER = data_dir / 'ledger.json'
+    GATE_LOG = data_dir / 'gate_log.json'
+    history.HISTORY_DIR = data_dir / 'history'
+    TRIALS_DIR = Path(os.environ.get('TRIALS_DIR') or data_dir / 'trials')
+    TRANSCRIPT_CACHE = Path(os.environ.get('TRANSCRIPT_CACHE_DIR') or data_dir / 'transcript_cache')
     if demo_only() or mode == 'inline':
         config = read_agent(name)
         if public_agent(config) != config:
@@ -411,21 +485,15 @@ def main():
         AGENT = resolve_agent()
     else:
         sys.exit('MODE must be inline or stored')
-    TRIALS_DIR = Path(os.environ.get('TRIALS_DIR') or DEFAULT_TRIALS_DIR)
-    TRANSCRIPT_CACHE = Path(os.environ.get('TRANSCRIPT_CACHE_DIR') or HERE.parents[1] / 'data' / 'transcript_cache')
     PAGE = ((HERE / 'index.html').read_text(encoding='utf-8')
             .replace('{{AGENT_NAME}}', html.escape(AGENT['name']))
             .replace('{{AGENT_JSON}}', json.dumps(AGENT).replace('<', '\\u003c')))
     fixed = os.environ.get('PORT')
     port = int(fixed) if fixed else 3000
-    while True:
-        try:
-            server = ThreadingHTTPServer((host, port), Handler)
-            break
-        except OSError:
-            if fixed or port >= 3010:
-                raise
-            port += 1
+    try:
+        server = ThreadingHTTPServer((host, port), Handler)
+    except OSError as err:
+        raise SystemExit(f'Could not bind http://{host}:{port}. Is another Second Listen server already running?') from err
     print(f"Second Listen: http://localhost:{port} ({'sample preview' if demo_only() else mode})", flush=True)
     try:
         server.serve_forever()

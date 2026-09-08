@@ -60,6 +60,13 @@ python deployment/browser/server.py
 
 Open http://localhost:3000 and start the call.
 
+The local server owns port 3000. Closing the browser does not stop the Python
+process; stop the terminal process before starting another copy. If port 3000
+is already occupied, startup now fails clearly instead of silently moving to a
+different port. A voice-token error now identifies whether the API key was
+rejected, the service was rate-limited, the network failed, or the upstream
+service was unavailable.
+
 ### 5. Put it on a phone number
 
 ```sh

@@ -224,11 +224,31 @@ function dedupeActions(events) {
   return actions
 }
 
-function commitmentRow(c) {
+function commitmentRow(c, company, isSample) {
   const row = el('label', 'commit')
   const box = document.createElement('input')
   box.type = 'checkbox'
-  box.onclick = () => row.classList.toggle('checked', box.checked)
+  box.checked = c.status === 'completed'
+  row.classList.toggle('checked', box.checked)
+  box.onclick = async () => {
+    row.classList.toggle('checked', box.checked)
+    if (isSample) return
+    box.disabled = true
+    try {
+      await fetch('/api/history/status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ company, task: c.task, status: box.checked ? 'completed' : 'open' }),
+      }).then(responseJSON)
+      c.status = box.checked ? 'completed' : 'open'
+    } catch (error) {
+      box.checked = !box.checked
+      row.classList.toggle('checked', box.checked)
+      feedback('Follow-up status could not be saved. ' + error.message, true)
+    } finally {
+      box.disabled = false
+    }
+  }
   const wrap = el('span')
   wrap.append(el('span', 'task', c.task), el('span', 'commit-meta', c.owner + ' · due ' + c.deadline))
   row.append(box, wrap)
@@ -331,7 +351,8 @@ function renderPrev(value, isSample) {
   $('prev-head').textContent = 'Previous follow-ups' + (value.last_debrief_at ? ' · ' + value.last_debrief_at.slice(0, 10) : '')
   if (showHistory && isSample) list.append(el('div', 'sample-note', 'FICTIONAL PREVIOUS REVIEW · HOW THE COMMITMENT CHECK WORKS'))
   if (showHistory && commitments.length) {
-    for (const c of commitments) list.append(commitmentRow(c))
+    const company = $('company').value.trim()
+    for (const c of commitments) list.append(commitmentRow(c, company, isSample))
     $('sec-prev').style.display = ''
   } else $('sec-prev').style.display = 'none'
   // Empty note.
@@ -339,7 +360,8 @@ function renderPrev(value, isSample) {
   const emptyList = $('prev-empty'); emptyList.replaceChildren()
   $('prev-head-empty').textContent = 'Previous follow-ups' + (value.last_debrief_at ? ' · ' + value.last_debrief_at.slice(0, 10) : '')
   if (showHistory && commitments.length) {
-    for (const c of commitments) emptyList.append(commitmentRow(c))
+    const company = $('company').value.trim()
+    for (const c of commitments) emptyList.append(commitmentRow(c, company, isSample))
   }
 }
 function refreshLedger(render = true) {

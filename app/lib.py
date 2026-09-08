@@ -214,10 +214,11 @@ def _agents_api() -> str:
     return os.environ.get("AGENTS_API_BASE", "https://agents.assemblyai.com/v1")
 
 
-def _request(url: str, label: str, method: str, headers: dict, data: Optional[bytes]) -> str:
+def _request(url: str, label: str, method: str, headers: dict,
+             data: Optional[bytes], timeout: float = 30.0) -> str:
     req = urllib.request.Request(url, data=data, method=method, headers=headers)
     try:
-        with urllib.request.urlopen(req) as res:
+        with urllib.request.urlopen(req, timeout=timeout) as res:
             return res.read().decode()
     except urllib.error.HTTPError as err:
         raise ApiError(label, err.code, err.read().decode()) from None

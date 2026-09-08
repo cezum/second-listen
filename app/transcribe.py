@@ -10,10 +10,13 @@ Standard library only, matching lib.py.
 """
 
 import json
+import http.client
 import os
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
+from pathlib import Path
 
 API_BASE = "https://api.assemblyai.com/v2"
 
@@ -85,24 +88,53 @@ def _request_retry(url: str, attempts: int = 3, **kwargs) -> bytes:
             delay *= 2
 
 
-def transcribe(audio_bytes: bytes, filename: str, timeout: float = 300.0) -> dict:
-    """Transcribe a pre-recorded audio file to text.
+def _request_file(url: str, method: str, headers: dict, path: Path,
+                  timeout: float = 300.0) -> bytes:
+    """Send a file body in chunks so upload size does not multiply in memory."""
+    parsed = urllib.parse.urlsplit(url)
+    if parsed.scheme != 'https' or parsed.query or parsed.fragment:
+        raise TranscribeError('unsupported upload URL')
+    conn = http.client.HTTPSConnection(parsed.netloc, timeout=timeout)
+    try:
+        conn.putrequest(method, parsed.path or '/')
+        for key, value in headers.items():
+            conn.putheader(key, value)
+        conn.putheader('Content-Length', str(path.stat().st_size))
+        conn.endheaders()
+        with path.open('rb') as source:
+            while True:
+                chunk = source.read(1024 * 1024)
+                if not chunk:
+                    break
+                conn.send(chunk)
+        response = conn.getresponse()
+        body = response.read()
+        if not 200 <= response.status < 300:
+            raise TranscribeError(
+                f"{method} {url} failed ({response.status}): {body.decode(errors='replace')}",
+                transient=response.status in _RETRY_CODES)
+        return body
+    except TranscribeError:
+        raise
+    except (OSError, TimeoutError) as err:
+        raise TranscribeError(f"{method} {url} failed: {err}", transient=True) from None
+    finally:
+        conn.close()
 
-    Returns {"text", "language", "duration", "confidence"}.
-    """
-    # 1. Upload the raw audio as the request body to get a short-lived URL.
-    #    Upload gets the longest socket timeout — it moves the whole file.
-    up = _request_retry(f"{API_BASE}/upload", method="POST",
-                        headers={**_auth(), "Content-Type": _mime_for(filename)},
-                        data=audio_bytes, timeout=300.0)
-    upload_url = json.loads(up).get("upload_url")
-    if not upload_url:
-        raise TranscribeError(f"upload failed: {up.decode()}")
 
-    # 2. Submit a transcription job. language_detection covers mixed
-    #    Chinese/English audio; no need to guess the language up front.
-    #    speech_models (plural) is the current param; the singular
-    #    speech_model is deprecated and 400s for modern model names.
+def _request_file_retry(url: str, path: Path, attempts: int = 3, **kwargs) -> bytes:
+    delay = 1.0
+    for attempt in range(attempts):
+        try:
+            return _request_file(url, path=path, **kwargs)
+        except TranscribeError as err:
+            if attempt + 1 == attempts or not err.transient:
+                raise
+            time.sleep(delay)
+            delay *= 2
+
+
+def _transcribe_uploaded(upload_url: str, timeout: float) -> dict:
     payload = json.dumps({
         "audio_url": upload_url,
         "speech_models": ["universal-2"],
@@ -115,7 +147,6 @@ def transcribe(audio_bytes: bytes, filename: str, timeout: float = 300.0) -> dic
     if not transcript_id:
         raise TranscribeError(f"transcript submit failed: {sub.decode()}")
 
-    # 3. Poll until the job finishes (a few seconds for a short clip).
     deadline = time.time() + timeout
     while time.time() < deadline:
         time.sleep(2)
@@ -132,3 +163,29 @@ def transcribe(audio_bytes: bytes, filename: str, timeout: float = 300.0) -> dic
         if status == "error":
             raise TranscribeError(f"transcription error: {res.get('error')}")
     raise TranscribeError("transcription timed out")
+def transcribe(audio_bytes: bytes, filename: str, timeout: float = 300.0) -> dict:
+    """Transcribe a pre-recorded audio file to text.
+
+    Returns {"text", "language", "duration", "confidence"}.
+    """
+    # 1. Upload the raw audio as the request body to get a short-lived URL.
+    #    Upload gets the longest socket timeout — it moves the whole file.
+    up = _request_retry(f"{API_BASE}/upload", method="POST",
+                        headers={**_auth(), "Content-Type": _mime_for(filename)},
+                        data=audio_bytes, timeout=300.0)
+    upload_url = json.loads(up).get("upload_url")
+    if not upload_url:
+        raise TranscribeError(f"upload failed: {up.decode()}")
+
+    return _transcribe_uploaded(upload_url, timeout)
+
+
+def transcribe_file(path: Path, filename: str, timeout: float = 300.0) -> dict:
+    """Transcribe a temporary file without copying its full bytes in memory."""
+    upload = _request_file_retry(
+        f"{API_BASE}/upload", path=Path(path), method="POST",
+        headers={**_auth(), "Content-Type": _mime_for(filename)}, timeout=300.0)
+    upload_url = json.loads(upload).get("upload_url")
+    if not upload_url:
+        raise TranscribeError(f"upload failed: {upload.decode()}")
+    return _transcribe_uploaded(upload_url, timeout)
