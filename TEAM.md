@@ -3,7 +3,7 @@
 ## Team
 
 - **Team name**: Second Listen
-- **Members**: cezum *(TODO: replace with real member names before submission)*
+- **Members**: cezum
 - **Contact**: via GitHub profile
 
 ## API paths used

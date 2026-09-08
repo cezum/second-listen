@@ -112,7 +112,7 @@ Total: 225 s = 3:44.
 
 ## Build pipeline
 
-- Script: `私有库/_demo_build/build_demo_v7.py` (Python 3.13 + edge-tts).
+- Script: the v7 build script (kept locally with the source clips, not in this repo; Python 3.13 + edge-tts).
 - 6 video segments (intro A, intro B, live part 1, live part 2, upload,
   outro), all forced 30 fps, video-only.
 - 5 audio segments (TTS for intro A/B/upload/outro, original trial3

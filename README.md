@@ -107,9 +107,9 @@ reopened` / `Reminder set` / `Two reminders set`) plus a persistent
 bottom-left `LIVE DEBRIEF · PROJECT 8 · SECOND CHECK-IN` tag orient the
 viewer through the long live segment. v1/v2/v3/v4/v5/v6 cuts still exist on
 disk as `SecondListen_demo_v{1,2,3,4,5,6}.mp4` for length-constrained
-fallbacks (2:25 / 1:44 / 2:25 / 2:44 / 3:57 / 3:47). The v7 build script
-(`_demo_build/build_demo_v7.py`) has a one-line switch (`TRIM_LITIGATION`)
-to produce a fully uncut 4:01 cut if needed. The submission video is
+fallbacks (2:25 / 1:44 / 2:25 / 2:44 / 3:57 / 3:47). The v7 build script (kept
+locally with the source clips, not in this repo) has a one-line switch
+(`TRIM_LITIGATION`) to produce a fully uncut 4:01 cut if needed. The submission video is
 `demo/SecondListen_demo_v7.mp4` (1920×1080, 3:44). Earlier cuts are
 intentionally not part of this public repo.
 

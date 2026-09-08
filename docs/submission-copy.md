@@ -39,7 +39,6 @@ A second engine covers recordings: upload a file, Universal-2 transcribes it (Ch
 
 ## Still needed before submitting
 
-1. Public GitHub repo URL (repo is committed locally; no remote yet)
+1. Public GitHub repo URL (repo created on GitHub; remote not configured yet)
 2. Video link (upload v7 to YouTube Unlisted, then paste the URL)
 3. Demo application platform + URL (deploy `app/render.yaml` to Render)
-4. TEAM.md member name TODO

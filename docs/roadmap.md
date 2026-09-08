@@ -41,7 +41,7 @@ from `app/data/history/<company>.json` at publish time — no vector store, no D
   re-test pass); W2 delivered ahead of plan: evidence table, ledger,
   escalation banner, Action Items, auto-archive, file-upload mode.
 - 2026-09-03 — W3 mechanisms live: cross-debrief history file + commitment
-  check (injection verified end-to-end on 衡远医疗, 2 commitments);
+  check (injection verified end-to-end on a Chinese mock company, 2 commitments);
   conversation quality rounds W2–W8 archived; prompt v0.3→v0.4 (short quotes,
   action-item discipline, single reply after batch logs, plain English);
   min_silence tuned 1000→650→800; front-end semantic gate retired as the
