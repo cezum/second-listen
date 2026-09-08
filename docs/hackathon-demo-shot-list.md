@@ -1,8 +1,9 @@
 # Hackathon Demo Shot List
 
 Use this checklist with [`hackathon-demo-script-2min.md`](hackathon-demo-script-2min.md).
-The final cut is a clean, edited 1:43 submission video built from real screen
-recordings — no scripted sample playback.
+The final cut is a 2:25 submission video built from real screen recordings —
+no scripted sample playback. v3 replaced v1's full AI narration with the
+actual recorded conversation in the live and closure sections.
 
 ## Before recording
 
@@ -16,29 +17,37 @@ recordings — no scripted sample playback.
 
 | Source | Length | Used for |
 |---|---|---|
-| Live debrief, full session (`Project 8`) | 3:38 | Main walkthrough: signal timing, focused question, REVIEW flag, final report, note export |
-| Live debrief, next-day session (`Project 8`) | 3:09 | The follow-up carryover beat (previous follow-ups listed at open) |
-| Upload analysis (`Project 9`) | 1:05 | Second input path: upload → report → suggested questions |
+| Live debrief, full session (`Project 8`) | 3:38 | Live A [10,32] + Live B [66,126] |
+| Live debrief, next-day session (`Project 8`) | 3:09 | Closure [18,30] — previous follow-ups listed at open |
+| Upload analysis (`Project 9`) | 1:05 | Upload [0,20] |
 | Two aborted takes | ~30s | Unused |
 
-## Final cut structure
+## Final cut structure (v3)
 
-| Time | Section |
-|---|---|
-| 0:00–0:09 | Problem hook on the blank workspace |
-| 0:10–0:26 | Live debrief starts; first signal lands with quote + timestamp |
-| 0:29–0:55 | Focused question → agreed action; REVIEW flag on the IPO timeline |
-| 0:56–1:02 | Final report close-up (4 signals / 2 review / 4 actions) |
-| 1:03–1:10 | Next session opens with previous follow-ups |
-| 1:13–1:24 | Upload path (Project 9) → same structured note |
-| 1:30–1:43 | Note downloaded → closing card |
+| Time | Section | Audio | Callout |
+|---|---|---|---|
+| 0:00–0:20 | Intro: entry screen (two doors) | Narration | — |
+| 0:20–0:42 | Live A: greeting + first description → R-01 filed | Real audio | "Signals filed, with the quote" @ 0:36–0:42 |
+| 0:42–1:02 | Live B: IPO slip → REVIEW flag → buyback question → A-01/A-02 created | Real audio | "Agreed action - owner and deadline" @ 1:24–1:34 |
+| 1:02–1:14 | Closure: Welcome back + 4-item previous follow-ups | Real audio | "Prior follow-ups" @ 1:03–1:12 |
+| 1:14–1:19 | Transition: entry screen | Narration | — |
+| 1:19–1:39 | Upload: Project 9 full report | Narration | — |
+| 1:39–1:45 | Closing card | Silent | — |
+
+Total: 145 s = 2:25.
 
 ## Editing rules that were applied
 
-- Browser chrome is cropped out (address bar, profile name, window frame);
-  the page is centered on a canvas matching the app background.
-- Dialogue sections are sped up (1.15x–1.8x) but never staged or re-read.
-- Narration is a separate AI voice track; burned-in captions mirror it.
+- Browser chrome is cropped out (`crop=1920:884:0:124`); the page is centered
+  on a beige canvas (`pad=1920:1080:0:98:color=0xF6F4EF`).
+- The live sections run at 1.0x — no speed ramps. The two stretch breaks are
+  intentional (skip mid-sentence answer, land on agreed action).
+- Audio is the original recorded conversation in the live and closure
+  sections (the investor's voice + agent TTS). AI narration is used only for
+  the intro, transition, upload, and closing.
+- Three on-screen callouts use `drawtext` (Georgia 26 px, dark text, beige box)
+  with `enable='between(t,start,end)'` in segment-local time, so they appear
+  exactly when the corresponding mechanism fires.
 - No music.
 
 ## Fallback (not needed in the final cut)
@@ -52,5 +61,19 @@ for the product story. The live takes were stable, so the sample is unused.
 - The first risk never appears before its supporting sentence is spoken.
 - The words `Project 8` and `fictional` are visible and spoken.
 - The video includes a real live result and a real upload result.
-- No API key, real recording, local path, browser chrome, or private data appears.
-- The final report clearly shows evidence quotes and concrete follow-ups.
+- The agreed action is created on camera with owner, due, and agreed-at meta
+  visible (the core "voice-in, quotes-kept" promise).
+- The follow-up carryover is on camera: the closure shot's "Previous
+  follow-ups" list is exactly the agreed actions just created in live B.
+- No API key, real recording, local path, browser chrome, or private data
+  appears.
+- The transferable industries are listed on the closing card.
+
+## Build pipeline
+
+- Script: `私有库/_demo_build/build_demo_v3.py` (Python 3.13 + edge-tts).
+- Per-segment video encodes (all forced 30 fps, video-only). Per-segment
+  audio (original for live/closure; TTS + silence for intro/trans/upload/outro).
+- `ffmpeg -f concat -c copy` stitches the video segments; audio is built
+  separately and `amix`-ed per segment before concat.
+- Final mux adds fade in / fade out.

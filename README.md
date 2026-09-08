@@ -88,8 +88,12 @@ Core product complete: playbook-driven live debrief (evidence, ledger,
 escalation, action items), file-upload mode for recorded/Chinese debriefs,
 downloadable follow-up notes, and cross-debrief commitment checks all
 implemented and verified (Round 2's check is verified at the publish/greeting
-layer; a full voice pass is pending). Demo video is cut and its narration
-script is in [docs/hackathon-demo-script-2min.md](docs/hackathon-demo-script-2min.md).
+layer; a full voice pass is pending). Demo video v3 is cut and its narration
+script is in [docs/hackathon-demo-script-2min.md](docs/hackathon-demo-script-2min.md):
+2:25 submission, original audio preserved in the live and closure sections,
+three on-screen callouts (`Signals filed, with the quote` /
+`Agreed action - owner and deadline` / `Prior follow-ups`), full IPO→REVIEW
+flag→agreed action arc shown on camera.
 
 ## License
 

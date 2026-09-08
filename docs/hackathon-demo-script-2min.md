@@ -1,4 +1,4 @@
-# Hackathon Demo Script — Second Listen (final cut, 1:43)
+# Hackathon Demo Script — Second Listen (final cut, 2:25)
 
 This is the narration script of the finished submission video. Project 8 is a
 fictional portfolio company; the upload section uses Project 9, a second
@@ -8,27 +8,38 @@ Everything on screen is a real run: the live path is the AssemblyAI Voice Agent
 WebSocket, and the upload path is a real Universal-2 transcription + analysis.
 No scripted sample playback is used in the final cut.
 
-Narration: AI voice (en-US-AndrewNeural). Captions are burned in; the source
-SRT lives with the editing assets.
+Narration: AI voice (en-US-AndrewNeural) over the live and upload sections,
+plus the intro, transition, and outro. The live and closure sections use the
+actual recorded conversation (investor's voice + agent TTS), not a voiceover.
+Three on-screen callouts highlight the key moments.
 
-| Time | Screen | Narration |
+| Time | Screen | Audio |
 |---|---|---|
-| 0:00–0:09 | Blank workspace, typing the company name | After an investment, the real signals come out in casual check-in calls. A week later, nobody remembers exactly what was said. |
-| 0:10–0:18 | Start debrief → agent greeting | This is Project 8, a fictional company for this demo. I start a live debrief, and the agent listens in real time. |
-| 0:19–0:26 | Speaking; R-01 lands with "said at 00:19" | As I speak, every signal is filed on the right, with the original quote, and the exact moment it was said. |
-| 0:29–0:39 | Focused question → agreed action with owner/deadline | The partner doesn't interrupt the story. It asks one focused question, then turns the answer into an agreed action, with an owner and a deadline. |
-| 0:44–0:55 | IPO timeline slips → R-03 REVIEW flag | Some findings go straight to the risk list. Uncertain ones, like a slipping IPO timeline, are flagged for human review. The tool suggests; the investor decides. |
-| 0:56–1:02 | Final report: 4 signals / 2 review / 4 actions | By the end: four signals, two flagged for review, and four agreed actions. |
-| 1:03–1:10 | Next day's debrief opens with previous follow-ups | A week later, the next check-in opens with last week's follow-ups already on the list. Nothing gets lost between visits. |
-| 1:13–1:24 | Upload a recording (Project 9) → report → suggested questions | The same review also works from an uploaded recording. Different company, same structured note. Nine signals, seven flagged for review, and suggested questions for the next call. |
-| 1:30–1:43 | Follow-up note downloaded → closing card | Second Listen helps investors remember what changed, verify what matters, and carry the right follow-up into the next check-in. |
+| 0:00–0:20 | Entry screen (two doors: Start debrief / Upload a recording) | Narration: investment work, project work, customer success — most of it lives in conversations. Second Listen is built for one of the hardest: post-investment check-ins. Two modes — speak live with the partner, or upload a recording. This is Live. |
+| 0:20–0:42 | Live A: Project 8 — agent greeting + first description | Real audio (investor + agent). Callout "Signals filed, with the quote" fires as R-01 lands. |
+| 0:42–1:02 | Live B: IPO slip → flagged REVIEW → buyback question → agreed action with owner and deadline | Real audio. Callout "Agreed action - owner and deadline" fires as A-01 and A-02 are created (Owner: Investor, Due: next week / as soon as possible, Agreed at: 00:41 / 01:22). |
+| 1:02–1:14 | Closure: next check-in starts with "Welcome back... let's close one prior follow-up at a time." Right panel: 4-item Previous follow-ups list | Real audio. Callout "Prior follow-ups" highlights the carryover. |
+| 1:14–1:19 | Entry screen again (transition card) | Narration: If a recording already exists, drop it straight in — same review. |
+| 1:19–1:39 | Upload: Project 9 — full report with 9 signals / 7 to review / 9 questions (compliance red line, key personnel loss, funds used outside agreed purpose) | Narration: The same review works from an uploaded recording. The partner listens, files every signal with the original quote, and lists what to verify before the next call. |
+| 1:39–1:45 | Closing card | Silent. Text: Second Listen. — Remember what changed. Verify what matters. Same method — project · customer success · compliance reviews. Built for the lablab.ai x AssemblyAI hackathon — 2026. |
 
 ## Notes
 
-- The live section condenses a 3.5-minute real session with speed ramps
-  (1.15x–1.8x); no content is staged.
-- The upload section uses a cached transcription ("Saved transcription
-  reused"), so the analysis returns in seconds on screen.
-- Earlier drafts of this script used the labeled "Watch a sample" walkthrough
-  as the centerpiece; the final cut replaced it with the real live session,
-  which also covers the same cause-and-effect beats.
+- The live section runs at 1.0x with two contiguous stretches:
+  - Live A: clip_p8_trial [10s, 32s] — greeting + customer delay + R-01.
+  - Live B: clip_p8_trial [66s, 126s] — IPO slip → REVIEW flag → buyback
+    question → agreed action A-01/A-02 with owner / due / agreed-at.
+  - The break is intentional: it skips the customer's first answer to the
+    buyback question (which is mid-sentence) and lands cleanly on the agreed
+    action resolution.
+- The closure shot is clip_p8_trial3 [18s, 30s] — the agent automatically opens
+  the next check-in with last week's follow-ups already on the list, closing
+  the loop with the agreed actions just created.
+- The upload section is clip_p9 [0s, 20s] — the original clip is silent, so
+  narration is overlaid.
+- All three callouts are rendered with `drawtext` (Georgia, 26 px, dark on
+  beige box) in the segment-local time base, so they appear exactly when the
+  corresponding moment occurs.
+- Earlier v1/v2 drafts used a full AI narration over every second of the
+  recorded clips; v3 replaces that with real audio in the live and closure
+  sections and reserves narration for the framing pieces only.
