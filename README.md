@@ -51,6 +51,10 @@ docs/roadmap.md         build milestones for the hackathon month
 docs/live-test-checklist.md
                         one boot, three calls: everything that needs a voice,
                         with pass/fail for each check
+docs/submission-copy.md the lablab submission form copy (title, short/long
+                        description, tracks) with character/word counts
+slides/                 cover image (16:9) and the slide deck PDF, plus the
+                        HTML source the PDF was printed from
 skill/                  the playbook skill (ported from the author's published MIT risk-grading template)
 app/                    agent implementation — the AssemblyAI starter plus the Second Listen agent
 ```

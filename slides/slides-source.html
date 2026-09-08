@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Second Listen — slides</title>
+<style>
+  @page { size: 1280px 720px; margin: 0; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #F6F4EF; }
+  body { font-family: Georgia, "Times New Roman", serif; color: #1B1714; }
+
+  .slide {
+    width: 1280px; height: 720px;
+    padding: 78px 104px 64px 104px;
+    background: #F6F4EF;
+    position: relative;
+    display: flex; flex-direction: column;
+    break-after: page; page-break-after: always;
+    overflow: hidden;
+  }
+  .slide:last-child { break-after: auto; page-break-after: auto; }
+
+  .label {
+    font-family: Georgia, serif;
+    font-size: 15px; letter-spacing: .22em; text-transform: uppercase;
+    color: #8A7A66; margin-bottom: 26px;
+  }
+  h1 { font-size: 104px; font-weight: bold; margin: 0 0 18px 0; letter-spacing: -0.02em; }
+  h2 { font-size: 50px; font-weight: bold; line-height: 1.18; margin: 0 0 34px 0; letter-spacing: -0.01em; }
+  .tagline { font-size: 30px; font-style: italic; color: #4A4038; margin: 0 0 8px 0; }
+  p { font-size: 25px; line-height: 1.62; margin: 0 0 20px 0; color: #332C25; }
+  p.lead { font-size: 28px; }
+  .rule { width: 96px; height: 3px; background: #9C3B22; margin: 0 0 30px 0; }
+
+  .cols { display: flex; gap: 46px; margin-top: 6px; }
+  .col { flex: 1; }
+  .col h3 {
+    font-size: 22px; margin: 0 0 10px 0; color: #9C3B22;
+    letter-spacing: .06em; text-transform: uppercase;
+  }
+  .col p { font-size: 21px; line-height: 1.55; margin: 0; }
+
+  ol.steps { list-style: none; padding: 0; margin: 4px 0 0 0; counter-reset: s; }
+  ol.steps li {
+    counter-increment: s; position: relative;
+    padding: 0 0 0 62px; margin-bottom: 30px;
+    font-size: 25px; line-height: 1.55; color: #332C25;
+  }
+  ol.steps li::before {
+    content: counter(s); position: absolute; left: 0; top: -2px;
+    width: 40px; height: 40px; border: 2px solid #9C3B22; border-radius: 50%;
+    color: #9C3B22; font-size: 20px; line-height: 37px; text-align: center;
+  }
+  ol.steps li b { color: #1B1714; }
+
+  ul.tight { margin: 0; padding-left: 26px; }
+  ul.tight li { font-size: 25px; line-height: 1.55; margin-bottom: 16px; color: #332C25; }
+
+  .quote {
+    border-left: 3px solid #9C3B22; padding: 4px 0 4px 26px;
+    font-style: italic; font-size: 26px; color: #4A4038; line-height: 1.5;
+  }
+
+  .foot {
+    position: absolute; left: 104px; right: 104px; bottom: 44px;
+    font-size: 17px; color: #8A7A66; font-style: italic;
+    border-top: 1px solid #DFD8CB; padding-top: 16px;
+  }
+  .pnum {
+    position: absolute; right: 46px; bottom: 44px;
+    font-size: 15px; color: #B3A793; font-style: normal;
+  }
+  .spacer { flex: 1; }
+
+  .title-slide { justify-content: center; }
+  .title-slide .label { margin-bottom: 40px; }
+</style>
+</head>
+<body>
+
+<!-- 1 -->
+<section class="slide title-slide">
+  <div class="label">lablab.ai &times; AssemblyAI Voice Agent Hackathon &middot; 2026</div>
+  <h1>Second Listen</h1>
+  <p class="tagline">&ldquo;You said it out loud. You didn&rsquo;t realize it was a signal.&rdquo;</p>
+  <p>A voice agent for post-investment risk management.</p>
+  <div class="foot">Team: cezum &middot; MIT-licensed &middot; Built on AssemblyAI</div>
+  <div class="pnum">01</div>
+</section>
+
+<!-- 2 -->
+<section class="slide">
+  <div class="label">The gap</div>
+  <h2>Every fund tracks metrics.<br>Nobody captures what they hear.</h2>
+  <div class="cols">
+    <div class="col">
+      <h3>Dashboard signals</h3>
+      <p>Revenue decline, runway under six months, covenant breaches. Visible in KPI reports, already covered by portfolio monitoring tools.</p>
+    </div>
+    <div class="col">
+      <h3>Conversation signals</h3>
+      <p>A CFO leaving, grant money quietly moved to payroll, a lawsuit mentioned in passing. They exist only in conversation.</p>
+    </div>
+  </div>
+  <div class="spacer"></div>
+  <div class="foot">Second Listen covers the second channel &mdash; the gap between &ldquo;the conversation happened&rdquo; and &ldquo;the signal is in the ledger&rdquo;.</div>
+  <div class="pnum">02</div>
+</section>
+
+<!-- 3 -->
+<section class="slide">
+  <div class="label">Why voice, why now</div>
+  <h2>A signal is freshest at the moment<br>it is spoken.</h2>
+  <p class="lead">By the time a quarterly review form gets filled, memory has eaten half the evidence &mdash; the quote, the date, who said it, what was promised.</p>
+  <p>What survives is a summary nobody can audit. What is lost is exactly the thing that should have triggered escalation.</p>
+  <div class="spacer"></div>
+  <div class="foot">Talking for two minutes right after the call is the lowest-friction moment to capture it.</div>
+  <div class="pnum">03</div>
+</section>
+
+<!-- 4 -->
+<section class="slide">
+  <div class="label">How it works</div>
+  <h2>A two-minute debrief that ends<br>in evidence, not notes.</h2>
+  <ol class="steps">
+    <li><b>Debrief</b> &mdash; after a founder call, board meeting or site visit, press and talk for about two minutes, casually retelling what happened.</li>
+    <li><b>Interrogate</b> &mdash; the agent follows the playbook&rsquo;s escalation checklist, one question at a time: who covers finance since the CFO left, was there written approval for moving the grant money.</li>
+    <li><b>Record</b> &mdash; an evidence table with timestamped quotes, a risk-ledger update, escalation flags, and a follow-up note with an owner and a deadline.</li>
+  </ol>
+  <div class="pnum">04</div>
+</section>
+
+<!-- 5 -->
+<section class="slide">
+  <div class="label">The differentiator</div>
+  <h2>Generic models summarize.<br>This one knows what to ask.</h2>
+  <p>We took a real post-investment risk-grading playbook &mdash; three-level grading, five evidence dimensions, an escalation checklist &mdash; and compiled it into skills the agent runs live.</p>
+  <ul class="tight">
+    <li>File every signal <b>with the quote it came from</b>.</li>
+    <li>Escalate anything that crosses a <b>red line</b> in the checklist.</li>
+    <li>Turn each answer into an <b>action with an owner and a due date</b>.</li>
+  </ul>
+  <div class="spacer"></div>
+  <div class="foot">The playbook is open and MIT-licensed. The agent is the slot &mdash; the method is the product.</div>
+  <div class="pnum">05</div>
+</section>
+
+<!-- 6 -->
+<section class="slide">
+  <div class="label">Live path &mdash; what the video shows</div>
+  <h2>Everything in the demo is a real run.</h2>
+  <p class="lead">The 3:44 submission video is one uncut second check-in: the agent reopens last week&rsquo;s follow-ups one at a time, then files what is new.</p>
+  <ul class="tight">
+    <li><b>Prior follow-ups reopened</b> by the agent at the opening, not by the investor.</li>
+    <li><b>Signal filed with its quote</b> &mdash; evidence you can audit back to the second it was said.</li>
+    <li><b>Agreed action created</b> with owner, due date and agreed-at timestamp &mdash; two reminders set on the same call.</li>
+  </ul>
+  <div class="spacer"></div>
+  <div class="foot">No scripted sample playback. Live path = AssemblyAI Voice Agent API.</div>
+  <div class="pnum">06</div>
+</section>
+
+<!-- 7 -->
+<section class="slide">
+  <div class="label">Cross-debrief memory</div>
+  <h2>Next week, it opens with<br>last week&rsquo;s promises.</h2>
+  <p>Each company keeps one JSON history file &mdash; no database, no vector store. Commitments carry an owner and a deadline; recorded signals stop the agent from asking twice.</p>
+  <div class="quote">&ldquo;Before we cover anything new &mdash; let&rsquo;s close one prior follow-up at a time.&rdquo;</div>
+  <div class="spacer"></div>
+  <div class="foot">After a live debrief, the history file is rebuilt from the session&rsquo;s own tool calls.</div>
+  <div class="pnum">07</div>
+</section>
+
+<!-- 8 -->
+<section class="slide">
+  <div class="label">Upload path</div>
+  <h2>Same playbook, on a recording.</h2>
+  <p>Not every debrief happens live. Upload a recorded call or a voice memo: Universal-2 transcribes it and the same playbook returns a signal list, escalation flags and follow-up questions.</p>
+  <p><b>Chinese recordings work today.</b> The live path speaks English; the upload path reads Chinese &mdash; the two engines cover each other&rsquo;s gap.</p>
+  <div class="spacer"></div>
+  <div class="foot">Demo case: an uploaded debrief returns 9 signals, 7 to review, 9 open questions &mdash; including a compliance red line and funds used outside the agreed purpose.</div>
+  <div class="pnum">08</div>
+</section>
+
+<!-- 9 -->
+<section class="slide">
+  <div class="label">Technology</div>
+  <h2>One WebSocket for the live path.</h2>
+  <div class="cols">
+    <div class="col">
+      <h3>Live debrief</h3>
+      <p>AssemblyAI Voice Agent API &mdash; STT + LLM + TTS, turn detection, barge-in and JSON-schema tool calling over a single connection.</p>
+    </div>
+    <div class="col">
+      <h3>Upload analysis</h3>
+      <p>AssemblyAI Universal-2 transcription plus a pluggable OpenAI-compatible LLM. Same playbook, two paths.</p>
+    </div>
+  </div>
+  <div class="spacer"></div>
+  <div class="foot">The entire backend is Python standard library only &mdash; requirements.txt installs nothing.</div>
+  <div class="pnum">09</div>
+</section>
+
+<!-- 10 -->
+<section class="slide">
+  <div class="label">Business value</div>
+  <h2>Who pays, and why.</h2>
+  <p>The buyer is the post-investment or risk function of a fund or an investment platform &mdash; the team that already owns a risk-grading system on paper, but has no way to feed it from conversations.</p>
+  <p>Post-investment is the first slot, not the only one. The same slot accepts a legal case checklist, a credit due-diligence script or a safety inspection list.</p>
+  <div class="spacer"></div>
+  <div class="foot">AI surfaces evidence and a suggested grade. Humans grade &mdash; the playbook&rsquo;s own rule, kept intact.</div>
+  <div class="pnum">10</div>
+</section>
+
+<!-- 11 -->
+<section class="slide">
+  <div class="label">Originality</div>
+  <h2>The hard part was never<br>transcription.</h2>
+  <div class="rule"></div>
+  <p class="lead">Transcription is solved. Knowing what matters, what needs follow-up, and what you are exposed to if nobody wrote it down &mdash; that is not.</p>
+  <p>Second Listen is a domain playbook compiled into a voice agent: file the signal, cite the quote, chase the owner. Open method, running on AssemblyAI.</p>
+  <div class="spacer"></div>
+  <div class="foot">Everything from this call is now on the record: the signals, the quote behind each one, and the follow-ups &mdash; each with an owner and a due date.</div>
+  <div class="pnum">11</div>
+</section>
+
+</body>
+</html>
