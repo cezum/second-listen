@@ -1,4 +1,4 @@
-# Hackathon Demo Script — Second Listen (final cut, 2:25)
+# Hackathon Demo Script — Second Listen (final cut, 2:44)
 
 This is the narration script of the finished submission video. Project 8 is a
 fictional portfolio company; the upload section uses Project 9, a second
@@ -8,20 +8,24 @@ Everything on screen is a real run: the live path is the AssemblyAI Voice Agent
 WebSocket, and the upload path is a real Universal-2 transcription + analysis.
 No scripted sample playback is used in the final cut.
 
-Narration: AI voice (en-US-AndrewNeural) over the live and upload sections,
-plus the intro, transition, and outro. The live and closure sections use the
-actual recorded conversation (investor's voice + agent TTS), not a voiceover.
-Three on-screen callouts highlight the key moments.
+Narration: AI voice (en-US-AndrewNeural) over the intro, transition, and upload
+sections. The live and closure sections use the actual recorded conversation
+(investor's voice + agent TTS), not a voiceover. Three on-screen callouts
+highlight the key moments.
+
+Two name cues in the recorded TTS are muted out: the "Mike?" cue that follows
+the agent's opening question in Live A, and the "Luke" name cue in the closure
+segment before the first follow-up question.
 
 | Time | Screen | Audio |
 |---|---|---|
 | 0:00–0:20 | Entry screen (two doors: Start debrief / Upload a recording) | Narration: investment work, project work, customer success — most of it lives in conversations. Second Listen is built for one of the hardest: post-investment check-ins. Two modes — speak live with the partner, or upload a recording. This is Live. |
-| 0:20–0:42 | Live A: Project 8 — agent greeting + first description | Real audio (investor + agent). Callout "Signals filed, with the quote" fires as R-01 lands. |
+| 0:20–0:42 | Live A: Project 8 — agent greeting + first description | Real audio (investor + agent) with the "Mike?" cue muted. Callout "Signals filed, with the quote" fires as R-01 lands. |
 | 0:42–1:02 | Live B: IPO slip → flagged REVIEW → buyback question → agreed action with owner and deadline | Real audio. Callout "Agreed action - owner and deadline" fires as A-01 and A-02 are created (Owner: Investor, Due: next week / as soon as possible, Agreed at: 00:41 / 01:22). |
-| 1:02–1:14 | Closure: next check-in starts with "Welcome back... let's close one prior follow-up at a time." Right panel: 4-item Previous follow-ups list | Real audio. Callout "Prior follow-ups" highlights the carryover. |
-| 1:14–1:19 | Entry screen again (transition card) | Narration: If a recording already exists, drop it straight in — same review. |
-| 1:19–1:39 | Upload: Project 9 — full report with 9 signals / 7 to review / 9 questions (compliance red line, key personnel loss, funds used outside agreed purpose) | Narration: The same review works from an uploaded recording. The partner listens, files every signal with the original quote, and lists what to verify before the next call. |
-| 1:39–1:45 | Closing card | Silent. Text: Second Listen. — Remember what changed. Verify what matters. Same method — project · customer success · compliance reviews. Built for the lablab.ai x AssemblyAI hackathon — 2026. |
+| 1:02–1:33 | Closure: next check-in starts with "Welcome back... let's close one prior follow-up at a time." Right panel: 4-item Previous follow-ups list. Agent repeats the question when the user does not answer, then the user replies "I still need to check." | Real audio with the "Luke" name cue muted. Callout "Prior follow-ups" highlights the carryover. |
+| 1:33–1:38 | Entry screen again (transition card) | Narration: If a recording already exists, drop it straight in — same review. |
+| 1:38–1:58 | Upload: Project 9 — full report with 9 signals / 7 to review / 9 questions (compliance red line, key personnel loss, funds used outside agreed purpose) | Narration: The same review works from an uploaded recording. The partner listens, files every signal with the original quote, and lists what to verify before the next call. |
+| 1:58–2:44 | Closing card | Silent. Text: Second Listen. — Remember what changed. Verify what matters. Same method — project · customer success · compliance reviews. Built for the lablab.ai x AssemblyAI hackathon — 2026. |
 
 ## Notes
 
