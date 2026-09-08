@@ -88,12 +88,19 @@ Core product complete: playbook-driven live debrief (evidence, ledger,
 escalation, action items), file-upload mode for recorded/Chinese debriefs,
 downloadable follow-up notes, and cross-debrief commitment checks all
 implemented and verified (Round 2's check is verified at the publish/greeting
-layer; a full voice pass is pending). Demo video v3 is cut and its narration
-script is in [docs/hackathon-demo-script-2min.md](docs/hackathon-demo-script-2min.md):
-2:25 submission, original audio preserved in the live and closure sections,
-three on-screen callouts (`Signals filed, with the quote` /
-`Agreed action - owner and deadline` / `Prior follow-ups`), full IPO→REVIEW
-flag→agreed action arc shown on camera.
+layer; a full voice pass is pending). Demo video v5 is the latest cut and
+its narration script is in [docs/hackathon-demo-script-2min.md](docs/hackathon-demo-script-2min.md):
+3:57 submission built around one uncut live debrief segment (177 s,
+natural pacing, original audio in the live section, AI narration only for the
+intro A/B and the upload sentence). Intro opens with a typewriter card
+stating the value proposition — "transcription is solved, judgment is not;
+playbook is compiled into skills" — and ends by naming what the viewer is
+about to watch. The 'Luke' name cue in the live audio is muted. Three
+on-screen callouts (`Prior follow-ups, reopened` / `Reminder set` /
+`Two reminders set`) plus a persistent bottom-left `LIVE DEBRIEF · PROJECT 8 ·
+SECOND CHECK-IN` tag orient the viewer through the long live segment.
+v1/v2/v3/v4 cuts still exist on disk as `SecondListen_demo_v{1,2,3,4}.mp4`
+for length-constrained fallbacks (2:25 / 1:44 / 2:25 / 2:44).
 
 ## License
 
