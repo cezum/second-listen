@@ -82,8 +82,8 @@ Core product complete: playbook-driven live debrief (evidence, ledger,
 escalation, action items), file-upload mode for recorded/Chinese debriefs,
 downloadable follow-up notes, and cross-debrief commitment checks all
 implemented and verified (Round 2's check is verified at the publish/greeting
-layer; a full voice pass is pending). Remaining: demo video + submission
-materials (out of scope for the repo's core work).
+layer; a full voice pass is pending). Demo video is cut and its narration
+script is in [docs/hackathon-demo-script-2min.md](docs/hackathon-demo-script-2min.md).
 
 ## License
 
