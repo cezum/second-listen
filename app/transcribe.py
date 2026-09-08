@@ -48,9 +48,12 @@ def _mime_for(filename: str) -> str:
 
 def _auth() -> dict:
     # The transcription API (api.assemblyai.com/v2) takes the key raw, without
-    # the "Bearer " prefix the agents API (agents.assemblyai.com) uses. Sending
-    # "Bearer ..." here yields 401 {"error": "Invalid API key"} on /v2/upload.
-    return {"Authorization": os.environ.get("ASSEMBLYAI_API_KEY", "")}
+    # the "Bearer " prefix the agents API (agents.assemblyai.com) uses. Accept
+    # either form in .env by normalizing here, matching lib.aai().
+    api_key = os.environ.get("ASSEMBLYAI_API_KEY", "").strip()
+    if api_key.lower().startswith("bearer "):
+        api_key = api_key[7:].strip()
+    return {"Authorization": api_key}
 
 
 _RETRY_CODES = (408, 500, 502, 503, 504)

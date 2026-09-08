@@ -14,6 +14,7 @@ import os
 import tempfile
 import threading
 import time
+import urllib.parse
 import urllib.request
 from pathlib import Path
 from typing import Optional
@@ -24,6 +25,8 @@ DEFAULT_TRIALS_DIR = Path(__file__).resolve().parent / "data" / "trials"
 
 
 def _download(url: str, dest: Path) -> None:
+    if urllib.parse.urlsplit(url).scheme != "https":
+        raise ValueError(f"unexpected download URL scheme: {url!r}")
     with urllib.request.urlopen(url, timeout=120) as res, dest.open("wb") as f:
         while True:
             chunk = res.read(1024 * 1024)

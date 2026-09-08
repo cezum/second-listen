@@ -1,5 +1,6 @@
 import json
 import importlib.util
+import os
 import sys
 import tempfile
 import unittest
@@ -10,8 +11,10 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 import analyze
+import archive
 import history
 import history_from_ledger as ledger_tools
+import transcribe
 
 
 class RegressionTests(unittest.TestCase):
@@ -62,6 +65,35 @@ class RegressionTests(unittest.TestCase):
         history_data = {'commitments': [{'task': 'Send approval'}]}
         with self.assertRaises(ValueError):
             analyze._validated_analysis(value, 'No approval mentioned.', history_data)
+
+    def test_transcribe_auth_strips_bearer_prefix(self):
+        with patch.dict(os.environ, {'ASSEMBLYAI_API_KEY': 'Bearer FIXTURE_KEY'}):
+            self.assertEqual(transcribe._auth()['Authorization'], 'FIXTURE_KEY')
+
+    def test_gate_log_corrupt_is_not_treated_as_empty(self):
+        spec = importlib.util.spec_from_file_location(
+            'review_server_gate', ROOT / 'deployment' / 'browser' / 'server.py')
+        server = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(server)
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / 'gate.json'
+            path.write_text('{"broken":', encoding='utf-8')
+            with patch.object(server, 'GATE_LOG', path):
+                with self.assertRaises(ValueError):
+                    server.read_gate_log()
+
+    def test_cli_ledger_corrupt_reports_damaged(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / 'ledger.json'
+            path.write_text('{"sessions":', encoding='utf-8')
+            with patch.object(ledger_tools, 'LEDGER', path):
+                with self.assertRaises(SystemExit):
+                    ledger_tools.load_ledger()
+
+    def test_archive_download_rejects_non_https(self):
+        with tempfile.TemporaryDirectory() as temp:
+            with self.assertRaises(ValueError):
+                archive._download('file:///etc/hostname', Path(temp) / 'out.ogg')
 
 
 if __name__ == '__main__':

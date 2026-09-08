@@ -26,7 +26,7 @@ Edit the file in [agents/](../../agents/), run `python publish.py`, and start an
 
 ## What it does
 
-Publishes `agents/<AGENT>.jsonc` on startup if it has no id yet, so a fresh clone works with only an API key.
+By default the server runs inline: it reads `agents/<AGENT>.jsonc` and sends the prompt, voice and tools with each session, so a fresh clone works with only an API key. With `MODE=stored` it connects to an already published agent id instead.
 
 `GET /token` proxies AssemblyAI's token endpoint using your key and returns a 60 second session token. The key is never sent to the page.
 
@@ -39,7 +39,7 @@ debrief ledger.
 
 The side pane has two tabs. Events lists every websocket frame in both directions, with audio runs collapsed into counts. Agent shows the published agent as the API stored it, read only, served by `GET /agent`. Tool header values and LLM keys are stripped from that response, but the system prompt is in it, so on a public deployment anyone opening the page can read it.
 
-The session message contains only `{ agent_id }`. Prompt, voice, tools and turn detection are read from the stored agent, which is why the browser and the phone behave the same.
+In `MODE=stored` the session message contains only `{ agent_id }`; prompt, voice, tools and turn detection are read from the stored agent, which is why the browser and the phone behave the same. Inline mode sends the config from `agents/<AGENT>.jsonc` directly.
 
 ## Environment
 
@@ -49,8 +49,10 @@ The session message contains only `{ agent_id }`. Prompt, voice, tools and turn 
 | `AGENT` | Which file in `agents/` to serve. Defaults to `minimal`. |
 | `AGENT_ID_<NAME>` | The id `python publish.py` saved for that file. Connected to as it is. |
 | `AGENT_ID` | Overrides the per-file keys, for serving one specific agent. |
+| `MODE` | `inline` (default) sends the local `agents/<AGENT>.jsonc` with each session; `stored` connects to a published agent id. |
 | `PORT` | Defaults to 3000. If the port is occupied, startup fails with the exact port and a process-conflict message. |
-| `HOST` | Defaults to `127.0.0.1`. Set `0.0.0.0` only when a container platform routes to the port — the ledger and note endpoints have no auth. |
+| `HOST` | Defaults to `127.0.0.1`. Set `0.0.0.0` only when a container platform routes to the port — a remote host without `APP_PASSWORD` refuses to start. |
+| `APP_PASSWORD` | Required for remote hosts. All endpoints then require HTTP Basic auth with this password. |
 | `DATA_DIR` | Root for ledger, history, archives and transcript cache. Use a mounted persistent path for durable hosted data. |
 | `REQUIRE_HTTPS` | Set to `1` for remote deployments; requests without HTTPS forwarding are rejected. |
 

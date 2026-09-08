@@ -3,6 +3,9 @@ services:
     name: voice-agent
     runtime: python
     plan: free
+    # Blueprint commands run from rootDir, which defaults to the repository
+    # root; render.yaml lives in app/, so point the service at app/.
+    rootDir: app
     buildCommand: 'true'
     startCommand: python deployment/browser/server.py
     envVars:

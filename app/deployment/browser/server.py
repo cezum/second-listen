@@ -135,6 +135,18 @@ def write_ledger(value):
     atomic_write_text(LEDGER, json.dumps(value, ensure_ascii=False, indent=2))
 
 
+def read_gate_log():
+    if not GATE_LOG.exists():
+        return []
+    try:
+        value = json.loads(GATE_LOG.read_text(encoding='utf-8'))
+    except (OSError, ValueError) as err:
+        raise ValueError('The gate log is damaged. Restore its backup before recording new events.') from err
+    if not isinstance(value, list):
+        raise ValueError('The gate log is damaged. Restore its backup before recording new events.')
+    return value
+
+
 def valid_id(value):
     if not isinstance(value, str) or not re.fullmatch(r'[A-Za-z0-9_-]{1,128}', value):
         raise ValueError('A valid session_id is required')
@@ -369,7 +381,7 @@ class Handler(BaseHTTPRequestHandler):
                 self._json(202, {'ok': True, 'status': 'queued'})
             elif path == '/api/gate':
                 with LEDGER_LOCK:
-                    log = read_json(GATE_LOG, []) or []
+                    log = read_gate_log()
                     log.append({'at': datetime.now(timezone.utc).isoformat(),
                                 'session_id': valid_id(body.get('session_id')),
                                 'at_seconds': body.get('at_seconds'), 'kind': body.get('kind', 'fire')})
@@ -401,17 +413,18 @@ class Handler(BaseHTTPRequestHandler):
                     raise ValueError('A follow-up task is required')
                 if status not in ('completed', 'open'):
                     raise ValueError('Status must be completed or open')
-                path = history.HISTORY_DIR / (slugify(company) + '.json')
-                value = read_json(path)
-                if not isinstance(value, dict) or not isinstance(value.get('commitments'), list):
-                    raise ValueError('History file is missing or damaged')
-                match = next((item for item in value['commitments']
-                              if normalize_action_task(item.get('task', ''))
-                              == normalize_action_task(task)), None)
-                if match is None:
-                    raise ValueError('Follow-up not found for this company')
-                match['status'] = status
-                atomic_write_text(path, json.dumps(value, ensure_ascii=False, indent=2))
+                with LEDGER_LOCK:
+                    path = history.HISTORY_DIR / (slugify(company) + '.json')
+                    value = read_json(path)
+                    if not isinstance(value, dict) or not isinstance(value.get('commitments'), list):
+                        raise ValueError('History file is missing or damaged')
+                    match = next((item for item in value['commitments']
+                                  if normalize_action_task(item.get('task', ''))
+                                  == normalize_action_task(task)), None)
+                    if match is None:
+                        raise ValueError('Follow-up not found for this company')
+                    match['status'] = status
+                    atomic_write_text(path, json.dumps(value, ensure_ascii=False, indent=2))
                 self._json(200, {'ok': True, 'status': status})
             elif path == '/api/ledger':
                 event = validate_event(body)

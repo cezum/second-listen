@@ -76,9 +76,16 @@ def load_ledger() -> dict:
     if not LEDGER.exists():
         return {"sessions": {}}
     try:
-        return json.loads(LEDGER.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return {"sessions": {}}
+        value = json.loads(LEDGER.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as err:
+        raise SystemExit(
+            "ledger.json is damaged. Restore its backup before rebuilding "
+            "the history file.") from err
+    if not isinstance(value, dict) or not isinstance(value.get("sessions"), dict):
+        raise SystemExit(
+            "ledger.json is damaged. Restore its backup before rebuilding "
+            "the history file.")
+    return value
 
 
 def pick_session(ledger: dict, session_id: str, company: str = "") -> tuple[str, dict]:
