@@ -3,13 +3,13 @@
 | Week | Milestone | Deliverables |
 |---|---|---|
 | W1 (9/1–7) | Skeleton + questioning quality | official starter running; system prompt v0.2; questioning-quality test log (text-first: test prompt against the demo transcript in plain chat before wiring voice) |
-| W2 (9/8–14) | Act loop | evidence table with timestamped citations; risk ledger persisted to a single JSON file (no DB); escalation banner; drafted follow-up note; Action Items extraction as the one client tool; **file-upload mode**: pre-recorded audio → Universal-2 transcript → same playbook produces signal list + follow-up question list (covers Chinese recordings; no live dialogue for recorded files) |
+| W2 (9/8–14) | Act loop | evidence table with session-relative capture times; risk ledger persisted to a single JSON file (no DB); escalation banner; drafted follow-up note; Action Items extraction as the one client tool; **file-upload mode**: pre-recorded audio → Universal-2 transcript → the same evidence dimensions produce candidate signals + follow-up questions (covers Chinese recordings; no live dialogue for recorded files) |
 | W3 (9/15–21) | Memory + polish | cross-debrief commitment tracking via injecting a summary of previous sessions (history file, no vector store); *optional stretch: keyterms hot-update, PII redaction*; demo rehearsal |
 | W4 (9/22–30) | Record + submit | ≤5 min video, slides PDF, public repo finalized, buffer ≥3 days |
 
 ## Definition of done (MVP)
 
-- Talk 2 minutes → get: evidence table (5 dimensions, timestamped citations), ledger update, escalation flags, action items with owner + deadline.
+- Complete a spoken debrief → get: evidence table (5 dimensions, short quotes with session-relative capture times), ledger update, escalation flags, and action items with owner + deadline.
 - Agent follows checklist-driven questioning (not generic chatbot questions).
 - Second debrief for the same mock company opens with a commitment check.
 

@@ -84,7 +84,7 @@
   <h1>Second Listen</h1>
   <p class="tagline">&ldquo;You said it out loud. You didn&rsquo;t realize it was a signal.&rdquo;</p>
   <p>A voice agent for post-investment risk management.</p>
-  <div class="foot">Team: cezum &middot; MIT-licensed &middot; Built on AssemblyAI</div>
+  <div class="foot">Team: cezum &middot; Open project &middot; Built on AssemblyAI</div>
   <div class="pnum">01</div>
 </section>
 
@@ -125,7 +125,7 @@
   <ol class="steps">
     <li><b>Debrief</b> &mdash; after a founder call, board meeting or site visit, press and talk at a natural pace, casually retelling what happened.</li>
     <li><b>Interrogate</b> &mdash; the agent follows the playbook&rsquo;s escalation checklist, one question at a time: who covers finance since the CFO left, was there written approval for moving the grant money.</li>
-    <li><b>Record</b> &mdash; an evidence table with timestamped quotes, a risk-ledger update, escalation flags, and a follow-up note with an owner and a deadline.</li>
+    <li><b>Record</b> &mdash; an evidence table with short quotes and session-relative capture times, a risk-ledger update, escalation flags, and a follow-up note with an owner and a deadline.</li>
   </ol>
   <div class="pnum">04</div>
 </section>
@@ -149,11 +149,11 @@
 <section class="slide">
   <div class="label">Live path &mdash; what the video shows</div>
   <h2>Everything in the demo is a real run.</h2>
-  <p class="lead">The 3:44 submission video is one uncut second check-in: the agent reopens last week&rsquo;s follow-ups one at a time, then files what is new.</p>
+  <p class="lead">The 3:44 submission video shows a real second check-in. One quiet section was removed for length; the live segments otherwise run at their recorded pace.</p>
   <ul class="tight">
     <li><b>Prior follow-ups reopened</b> by the agent at the opening, not by the investor.</li>
-    <li><b>Signal filed with its quote</b> &mdash; evidence you can audit back to the second it was said.</li>
-    <li><b>Agreed action created</b> with owner, due date and agreed-at timestamp &mdash; two reminders set on the same call.</li>
+    <li><b>Signal filed with its quote</b> and the session-relative time when the agent captured it.</li>
+    <li><b>Two agreed actions recorded</b> with owner, due date and agreed-at time.</li>
   </ul>
   <div class="spacer"></div>
   <div class="foot">No scripted sample playback. Live path = AssemblyAI Voice Agent API.</div>
@@ -174,8 +174,8 @@
 <!-- 8 -->
 <section class="slide">
   <div class="label">Upload path</div>
-  <h2>Same playbook, on a recording.</h2>
-  <p>Not every debrief happens live. Upload a recorded call or a voice memo: Universal-2 transcribes it and the same playbook returns a signal list, escalation flags and follow-up questions.</p>
+  <h2>The same evidence framework, on a recording</h2>
+  <p>Not every debrief happens live. Universal-2 transcribes an uploaded call or voice memo. A configured LLM performs the full review; the built-in fallback surfaces keyword-matched candidates for human review.</p>
   <p><b>Chinese recordings work today.</b> The live path can listen to Chinese and other languages but replies in English. Upload analysis keeps the recording&rsquo;s language in its transcript and results.</p>
   <div class="spacer"></div>
   <div class="foot">Demo case: an uploaded debrief returns 9 signals, 7 to review, 9 open questions &mdash; including a compliance red line and funds used outside the agreed purpose.</div>
@@ -193,7 +193,7 @@
     </div>
     <div class="col">
       <h3>Upload analysis</h3>
-      <p>AssemblyAI Universal-2 transcription plus a pluggable OpenAI-compatible LLM. Same playbook, two paths.</p>
+      <p>AssemblyAI Universal-2 transcription plus a pluggable OpenAI-compatible LLM. One evidence framework, two execution paths.</p>
     </div>
   </div>
   <div class="spacer"></div>

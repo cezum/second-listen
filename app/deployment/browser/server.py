@@ -43,6 +43,9 @@ AGENT = None
 PAGE = ''
 DIMENSIONS = {'operations', 'exit_potential', 'self_funding', 'team_integrity', 'financial_health'}
 TOKEN_EXPIRES_IN_SECONDS = 60
+DEFAULT_SESSION_MAX_DURATION_SECONDS = 600
+MIN_SESSION_MAX_DURATION_SECONDS = 60
+MAX_SESSION_MAX_DURATION_SECONDS = 600
 
 
 class TokenError(Exception):
@@ -59,6 +62,20 @@ def debug_log(*args):
 
 def demo_only():
     return os.environ.get('DEMO_ONLY') == '1'
+
+
+def session_max_duration_seconds():
+    """Return a bounded live-session limit so a leaked password cannot buy hours."""
+    raw = os.environ.get('VOICE_SESSION_MAX_DURATION_SECONDS', str(DEFAULT_SESSION_MAX_DURATION_SECONDS))
+    try:
+        seconds = int(raw)
+    except ValueError:
+        debug_log('invalid VOICE_SESSION_MAX_DURATION_SECONDS; using default')
+        return DEFAULT_SESSION_MAX_DURATION_SECONDS
+    if not MIN_SESSION_MAX_DURATION_SECONDS <= seconds <= MAX_SESSION_MAX_DURATION_SECONDS:
+        debug_log('out-of-range VOICE_SESSION_MAX_DURATION_SECONDS; using default')
+        return DEFAULT_SESSION_MAX_DURATION_SECONDS
+    return seconds
 
 
 def public_agent(agent):
@@ -93,9 +110,13 @@ def mint_token():
     also prevents an unexpected upstream field from being copied into the
     client response, and the error path deliberately omits raw API details.
     """
+    max_session_duration = session_max_duration_seconds()
     for attempt in range(2):
         try:
-            payload = aai(f'/token?product=voice_agent&expires_in_seconds={TOKEN_EXPIRES_IN_SECONDS}')
+            payload = aai(
+                f'/token?product=voice_agent&expires_in_seconds={TOKEN_EXPIRES_IN_SECONDS}'
+                f'&max_session_duration_seconds={max_session_duration}'
+            )
             break
         except (ApiError, OSError) as err:
             retryable = isinstance(err, OSError) or (
@@ -116,7 +137,11 @@ def mint_token():
     if not isinstance(token, str) or not token.strip():
         debug_log('temporary voice token response did not contain a token')
         raise TokenError('AssemblyAI returned no usable voice token. Please retry.', 'invalid_token_response')
-    return {'token': token.strip(), 'expires_in_seconds': TOKEN_EXPIRES_IN_SECONDS}
+    return {
+        'token': token.strip(),
+        'expires_in_seconds': TOKEN_EXPIRES_IN_SECONDS,
+        'max_session_duration_seconds': max_session_duration,
+    }
 
 
 def read_ledger():

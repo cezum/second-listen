@@ -46,13 +46,14 @@ In `MODE=stored` the session message contains only `{ agent_id }`; prompt, voice
 | | |
 | --- | --- |
 | `ASSEMBLYAI_API_KEY` | Required. Stays in this process. |
-| `AGENT` | Which file in `agents/` to serve. Defaults to `minimal`. |
+| `AGENT` | Which file in `agents/` to serve. Defaults to `second-listen`. |
 | `AGENT_ID_<NAME>` | The id `python publish.py` saved for that file. Connected to as it is. |
 | `AGENT_ID` | Overrides the per-file keys, for serving one specific agent. |
 | `MODE` | `inline` (default) sends the local `agents/<AGENT>.jsonc` with each session; `stored` connects to a published agent id. |
 | `PORT` | Defaults to 3000. If the port is occupied, startup fails with the exact port and a process-conflict message. |
 | `HOST` | Defaults to `127.0.0.1`. Set `0.0.0.0` only when a container platform routes to the port — a remote host without `APP_PASSWORD` refuses to start. |
 | `APP_PASSWORD` | Required for remote hosts. All endpoints then require HTTP Basic auth with this password. |
+| `VOICE_SESSION_MAX_DURATION_SECONDS` | Defaults to 600. Limits a completed Voice Agent session to 60–600 seconds; larger or invalid values safely fall back to 600. |
 | `DATA_DIR` | Root for ledger, history, archives and transcript cache. Use a mounted persistent path for durable hosted data. |
 | `REQUIRE_HTTPS` | Set to `1` for remote deployments; requests without HTTPS forwarding are rejected. |
 
@@ -62,12 +63,12 @@ The server is [server.py](server.py), the page is [index.html](index.html) and t
 
 ## Hosting
 
-`render.yaml` is configured for one-click deploys. Render prompts for `ASSEMBLYAI_API_KEY` during Blueprint creation, since that is the only variable marked `sync: false`, and sets `PORT` itself. `HOST` is preset to `0.0.0.0` in the blueprint — containers must listen on all interfaces — while local runs stay on loopback. `AGENT` and `AGENT_ID` arrive with defaults and are editable under Environment on the service.
+The repository-level [`render.yaml`](../../../render.yaml) is configured for one-click deploys. Render prompts for `ASSEMBLYAI_API_KEY` and `APP_PASSWORD` during Blueprint creation and sets `PORT` itself. `HOST` is preset to `0.0.0.0` in the Blueprint — containers must listen on all interfaces — while local runs stay on loopback. `AGENT=second-listen` and `MODE=inline` are explicit defaults.
 
-With no id set the service publishes `AGENT` on boot and updates the agent of that name on later restarts, so restarts do not pile up duplicate agents. Setting `AGENT_ID` to the id from your `.env` is still better: the deployment then serves the same agent you tested locally.
+Inline mode sends the reviewed local agent configuration with every session and does not create a stored agent during deployment. If you intentionally switch to `MODE=stored`, set `AGENT_ID` to an agent you already published and tested.
 
 The default `app/data/` directory is local to the process. A hosted deployment
 must mount durable storage or use an external data store if ledger history,
 follow-up status and archived recordings must survive restarts.
 
-Anyone with the URL can start sessions billed to your key.
+Anyone who has both the URL and the Basic Auth password can start sessions billed to your key.

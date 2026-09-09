@@ -8,21 +8,21 @@
 [![AssemblyAI Twitter](https://img.shields.io/twitter/follow/AssemblyAI?label=%40AssemblyAI&style=social)](https://twitter.com/AssemblyAI)
 [![AssemblyAI YouTube](https://img.shields.io/youtube/channel/subscribers/UCtatfZMf-8EkIwASXM4ts0A)](https://www.youtube.com/@AssemblyAI)
 
-# AssemblyAI Voice Agent Starter for Python
+# Second Listen application runtime
 
-Voice agents defined as JSON files. Publish one to your AssemblyAI account, then talk to it in a browser tab or by calling a phone number.
+This directory contains the runnable Second Listen voice application and the reusable AssemblyAI Voice Agent starter utilities it was built from. Second Listen adds the post-investment playbook, evidence and action ledgers, cross-debrief history, upload analysis, follow-up notes, and a browser workspace.
 
 Each file in [agents/](agents/) is the request body for `POST /v1/agents`. The starter sends it unchanged, saves the agent ID it gets back to `.env`, and both deployments connect using that ID. An agent you already have goes the other way, `python import_agent.py <agent-id>` turns it into one of these files. Built on the [AssemblyAI Voice Agent API](https://www.assemblyai.com/products/voice-agent-api). Python 3.9 or later, standard library only, so there is nothing to pip install.
 
-There is a [JS version of this repo](https://github.com/AssemblyAI/voice-agent-starter-js) with the same agents and the same steps.
+The foundation came from AssemblyAI's official [Python](https://github.com/AssemblyAI/voice-agent-starter-python) and [JavaScript](https://github.com/AssemblyAI/voice-agent-starter-js) starters. See the repository-level [NOTICE](../NOTICE) for provenance and the contribution boundary.
 
 ## Quickstart
 
 ### 1. Clone
 
 ```sh
-git clone https://github.com/AssemblyAI/voice-agent-starter-python
-cd voice-agent-starter-python
+git clone https://github.com/cezum/second-listen.git
+cd second-listen/app
 cp .env.example .env
 ```
 
@@ -40,8 +40,8 @@ ASSEMBLYAI_API_KEY=your_key_here
 Publish one of the examples:
 
 ```sh
-python publish.py                       # agents/minimal.jsonc
-# AGENT=http-tools python publish.py    # or any other file in agents/
+AGENT=second-listen python publish.py   # the hackathon agent
+# AGENT=minimal python publish.py       # or another example in agents/
 ```
 
 Or import one you already have, shaped in the playground or the dashboard:
@@ -140,17 +140,18 @@ Twilio passes the call to AssemblyAI over SIP, so nothing in this repo sits in t
 
 ## Hosting the browser app
 
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/AssemblyAI/voice-agent-starter-python)
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/cezum/second-listen)
 
-Render reads [render.yaml](render.yaml) and prompts for `ASSEMBLYAI_API_KEY` and `APP_PASSWORD`. Set both: the first is the AssemblyAI credential, and the second protects the remote workspace from anyone who discovers the URL. It sets `PORT` itself. The other values arrive with defaults you can change under Environment on the service:
+Render reads the repository-level [render.yaml](../render.yaml) and prompts for `ASSEMBLYAI_API_KEY` and `APP_PASSWORD`. Set both: the first is the AssemblyAI credential, and the second protects the remote workspace from anyone who discovers the URL. It sets `PORT` itself. The other values arrive with defaults you can change under Environment on the service:
 
 | Variable | Default | What it does |
 | --- | --- | --- |
 | `ASSEMBLYAI_API_KEY` | prompted | Stays on the server. Never sent to the page. |
-| `AGENT` | `minimal` | Which `agents/<name>.jsonc` the service publishes when it boots. |
-| `AGENT_ID` | empty | Paste an id from your `.env` to serve that exact agent, whichever file it came from. |
+| `APP_PASSWORD` | prompted | HTTP Basic Auth password for the remote workspace. |
+| `AGENT` | `second-listen` | Which `agents/<name>.jsonc` the service sends with each inline session. |
+| `MODE` | `inline` | Sends the reviewed local agent config with each session. |
 
-Leaving `AGENT_ID` empty is fine. The service publishes `AGENT` on boot, and on later restarts it updates the agent of that name rather than creating another one.
+The Blueprint uses inline mode, so it does not create or update a stored agent on each restart. Add `LLM_BASE_URL`, `LLM_API_KEY`, and `LLM_MODEL` in Render if the full upload-review path is required; otherwise uploads use the deterministic keyword fallback.
 
 ### `MODE=inline`: skip the stored agent
 

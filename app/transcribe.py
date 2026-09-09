@@ -4,7 +4,7 @@ The live voice agent streams through the agents API (wss://agents...). File
 upload mode goes through the separate transcription API instead, which costs
 $0.45/hr (not realtime pricing) and handles Chinese and other languages well —
 this is what closes the "real-time voice can't speak Chinese" gap: we turn a
-Chinese recording into a transcript, then run the same playbook over the text.
+Chinese recording into a transcript, then apply the same evidence framework over the text.
 
 Standard library only, matching lib.py.
 """

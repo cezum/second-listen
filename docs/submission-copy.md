@@ -10,10 +10,10 @@
 Second Listen
 ```
 
-## Short description (≤255 chars — 250 used)
+## Short description (≤255 chars — 251 used)
 
 ```
-Second Listen is a voice agent for post-investment risk. After a founder call, the investor talks through what happened at a natural pace; an evidence-led risk playbook drives the follow-ups and returns timestamped evidence, escalation flags and actions with owners and deadlines.
+Second Listen turns spoken post-investment debriefs into structured evidence. Powered by AssemblyAI Voice Agents and Universal-2, it captures risk signals, asks focused follow-ups, records agreed actions, and carries open items into the next check-in.
 ```
 
 ## Long description (≥100 words — 235 used)
@@ -21,9 +21,9 @@ Second Listen is a voice agent for post-investment risk. After a founder call, t
 ```
 Every fund tracks metrics. Nobody captures what they hear. Post-investment risk arrives through two channels: dashboard signals, which monitoring tools already cover, and conversation signals - a CFO leaving, grant money quietly moved to payroll, a lawsuit mentioned in passing - which exist only in conversation and decay with memory before any form captures them.
 
-Second Listen closes that gap. After a founder call, board meeting or site visit, the investor talks to the agent at a natural pace, casually retelling what happened. A real post-investment risk playbook - evidence dimensions and an escalation checklist - is compiled into skills the agent runs live: it listens for risk signals hidden in small talk, asks checklist-driven follow-up questions one at a time, and files every signal with the quote it came from. Anything crossing a red line is escalated. Every answer becomes an agreed action with an owner and a due date. Each company keeps one JSON history file, so the next debrief opens by reopening last week's follow-ups - the submission video shows exactly this, as one uncut real run.
+Second Listen closes that gap. After a founder call, board meeting or site visit, the investor talks to the agent at a natural pace, casually retelling what happened. A post-investment risk playbook - evidence dimensions and an escalation checklist - guides the live agent: it listens for risk signals hidden in small talk, asks focused follow-up questions one at a time, and files each confirmed signal with a short quote and session-relative capture time. Checklist triggers are flagged for human review. When the investor explicitly agrees to follow up, the agent records an action with an owner and a due date. Each company keeps one JSON history file, so the next debrief opens by reopening the previous session's open actions. The submission video shows a real second check-in, with one quiet section removed for length.
 
-A second engine covers recordings: upload a file, Universal-2 transcribes it (Chinese works today), and the same playbook returns a signal list, escalation flags and follow-up questions. The backend is Python standard library only - requirements.txt installs nothing. The playbook is MIT-licensed; the agent is the slot, and post-investment is only the first one.
+A second engine covers recordings. Universal-2 transcribes the file (Chinese works today), then the same evidence dimensions produce candidate signals, escalation flags and follow-up questions. A configured OpenAI-compatible LLM performs the full upload review; without one, a deterministic keyword fallback marks candidates for human review. The backend is Python standard library only - requirements.txt installs nothing. The playbook is MIT-licensed; post-investment is the first domain slot.
 ```
 
 ## Tracks & technologies (suggested picks)
@@ -39,6 +39,6 @@ A second engine covers recordings: upload a file, Universal-2 transcribes it (Ch
 
 ## Still needed before submitting
 
-1. Public GitHub repo URL (repo created on GitHub; remote not configured yet)
+1. Push the final reviewed commits to `https://github.com/cezum/second-listen` and verify anonymous access
 2. Video link (upload v8 to YouTube Unlisted, then paste the URL)
-3. Demo application platform + URL (deploy `app/render.yaml` to Render)
+3. Demo application platform + URL (deploy the root `render.yaml` to Render)

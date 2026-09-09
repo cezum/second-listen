@@ -27,8 +27,8 @@ v8 is the same cut with the three callouts rebuilt as anchored bubbles (3:44).
 |---|---|---|---|
 | 0:00–0:17 | Intro A: typewriter card on beige (4 lines, sequential fade-in) | AI narration (NARR_A): problem statement, transcription is solved, judgment is not | — |
 | 0:17–0:42 | Intro B: entry screen (static, "two doors") | AI narration (NARR_B): playbook compiled into skills, what the partner does, what is about to happen | — |
-| 0:42–2:48 | Live part 1: trial3 [9.5, 135.8] (126.3 s) — natural pacing, no internal cuts. Walks through follow-ups #1, #2, #3. | Real audio. 3 Luke mutes in this segment. | (1) bubble "Prior follow-ups, reopened" @ 0:43–0:53, tail on the follow-up list<br>(2) bubble "Reminder set" @ 1:37–1:45, tail on the reminder just filed<br>Persistent: "LIVE DEBRIEF · PROJECT 8 · SECOND CHECK-IN" bottom-left |
-| 2:48–3:17 | Live part 2: trial3 [157.7, 186.5] (28.8 s) — "Since all follow-ups are still in progress, let's move on" / "Was there anything else new..." / "I've set two reminders for you" | Real audio | (3) bubble "Two reminders set" @ 3:02–3:14, tail on the actions just created |
+| 0:42–2:48 | Live part 1: trial3 [9.5, 135.8] (126.3 s) — natural pacing, no internal cuts. Walks through follow-ups #1, #2, #3. | Real audio. 3 Luke mutes in this segment. | (1) bubble "Prior follow-ups, reopened" @ 0:43–0:53, tail on the follow-up list<br>(2) legacy bubble "Reminder set" @ 1:37–1:45, referring to the recorded follow-up action<br>Persistent: "LIVE DEBRIEF · PROJECT 8 · SECOND CHECK-IN" bottom-left |
+| 2:48–3:17 | Live part 2: trial3 [157.7, 186.5] (28.8 s) — the recorded agent uses "two reminders" as shorthand for two persisted follow-up actions; no notifications are scheduled | Real audio | (3) legacy bubble "Two reminders set" @ 3:02–3:14, tail on the actions just created |
 | 3:17–3:29 | Upload: Project 9 static report frame | AI narration (NARR_UPLOAD): same skills run on a recording — drop in, get the same list | — |
 | 3:29–3:44 | Outro: typewriter card on beige (5 lines + footer, sequential fade-in) | AI narration (NARR_OUT): everything is on the record, next week the partner opens with them, Second Listen | — |
 
@@ -82,6 +82,9 @@ Total: 224.6 s = 3:44.
   the point the tail lands on, so each bubble sits next to the thing it
   describes rather than in the margin. Moving one is a single coordinate.
 - No music.
+- The recorded cut uses "reminder" as legacy shorthand for an action with an
+  owner, deadline and agreed-at time. The product does not schedule external
+  notifications.
 
 ## Total runtime is 3:44 — this is a tradeoff, not an oversight
 

@@ -21,21 +21,27 @@ Second Listen covers the second channel: the gap between "the conversation happe
 
 1. **Debrief** — after a call, press and talk for as long as the account needs.
 2. **Interrogate** — the agent follows the playbook's escalation checklist ("Who's covering finance since the CFO left? Was there written approval for moving the grant money?"), one question at a time.
-3. **Record** — produces an evidence table with timestamps, a risk-ledger update, escalation flags per policy, and a downloadable Markdown follow-up note per company. The AI surfaces evidence and suggestions; **authorized people make the final risk decision**.
+3. **Record** — produces an evidence table with session-relative capture times, a risk-ledger update, escalation flags per policy, and a downloadable Markdown follow-up note per company. The AI surfaces evidence and suggestions; **authorized people make the final risk decision**.
 
-Prefer not to talk? **Analyze recording** uploads a pre-recorded debrief (Chinese works too): Universal-2 transcribes it and the same playbook returns a signal list plus follow-up questions — no live dialogue needed.
+Prefer not to talk? **Analyze recording** uploads a pre-recorded debrief (Chinese works too): Universal-2 transcribes it, then the same evidence framework returns candidate signals and follow-up questions. With an OpenAI-compatible LLM configured it performs the full upload review; otherwise a deterministic keyword fallback marks candidates for human review.
 
 ## Demo
 
 <a href="https://github.com/cezum/second-listen/raw/main/demo/SecondListen_demo_v8.mp4"><img src="slides/cover_16x9.png" width="480" alt="Watch the Second Listen demo"></a>
 
-The 3:44 demo runs the real product end to end: a second check-in call that reopens last week's follow-ups one at a time, live evidence capture with the investor's own quotes, and an upload-mode analysis of a recording. Narration script: [docs/hackathon-demo-script-2min.md](docs/hackathon-demo-script-2min.md).
+The 3:44 demo uses real product runs: a second check-in call that reopens last week's follow-ups one at a time, live evidence capture with the investor's own quotes, and an upload-mode analysis of a recording. One quiet section of the live call was removed for length; the live segments otherwise run at their recorded pace. Narration script: [docs/hackathon-demo-script-2min.md](docs/hackathon-demo-script-2min.md).
 
 ## Tech
 
 - [AssemblyAI Voice Agent API](https://www.assemblyai.com/docs/voice-agents/voice-agent-api) — one WebSocket for STT + LLM + TTS, turn detection, barge-in, tool calling
 - Playbook skill: a structured risk framework (evidence dimensions, escalation checklist, and human confirmation) injected as the agent's system prompt
 - Backend is Python standard library only — `requirements.txt` installs nothing; audio transport runs in the browser (`AudioContext` + `AudioWorklet`) directly against the AssemblyAI WebSocket
+
+## Deploy to Render
+
+This repository includes a root-level [`render.yaml`](render.yaml). In Render, create a Blueprint from this repository and provide `ASSEMBLYAI_API_KEY` plus a strong `APP_PASSWORD`. The service runs the real browser application over HTTPS; its server-only API key mints single-use 60-second tokens, and every live session is capped at 10 minutes. Optional `LLM_BASE_URL`, `LLM_API_KEY`, and `LLM_MODEL` variables enable the full upload-review path.
+
+The free Render plan is suitable for a short trial, but it sleeps when idle and its filesystem is ephemeral. Use a paid persistent disk mounted at `/var/data`, or an external data store, if ledger and cross-debrief history must survive restarts.
 
 ## Run locally
 
@@ -56,6 +62,8 @@ Deployment and private-trial options are in [TEAM.md](TEAM.md).
 
 Each company keeps one small JSON history file (`app/data/history/<company>.json`). The next debrief for that company opens by checking the previous session's follow-ups — owner, deadline and all — one at a time, and skips re-asking signals already recorded. No database, no vector store; details in [docs/roadmap.md](docs/roadmap.md).
 
-## License
+## License and provenance
 
-MIT — see [LICENSE](LICENSE). The playbook skill keeps the original template's MIT notice in `skill/LICENSE`.
+Second Listen's project-authored code and documentation are released under the [MIT License](LICENSE). The playbook skill keeps its original MIT notice in `skill/LICENSE`.
+
+The `app/` runtime began from AssemblyAI's official Voice Agent starter repositories and has since been adapted for Second Listen. Upstream provenance and the project-specific contribution boundary are recorded in [NOTICE](NOTICE); third-party portions remain subject to their owners' terms.

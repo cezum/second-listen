@@ -1,0 +1,20 @@
+Second Listen - source provenance
+
+The application runtime in app/ began from AssemblyAI's official Voice Agent
+starter repositories:
+
+- https://github.com/AssemblyAI/voice-agent-starter-python
+- https://github.com/AssemblyAI/voice-agent-starter-js
+
+In particular, app/deployment/browser/app.js follows the official JavaScript
+starter implementation so that its browser audio and protocol handling remain
+compatible with AssemblyAI's reference integration.
+
+Second Listen's project-specific work includes the post-investment agent and
+playbook, evidence and action ledgers, cross-debrief history, upload
+transcription and review, follow-up note generation, the browser workspace,
+tests, deployment configuration, documentation, slides, and demo materials.
+
+The repository-level MIT license applies to project-authored portions. Any
+third-party code remains subject to the rights and terms of its respective
+owner. AssemblyAI names and marks belong to AssemblyAI.

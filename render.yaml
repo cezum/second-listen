@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: second-listen
+    runtime: python
+    plan: free
+    rootDir: app
+    buildCommand: python -m compileall -q .
+    startCommand: python deployment/browser/server.py
+    healthCheckPath: /health
+    envVars:
+      - key: ASSEMBLYAI_API_KEY
+        sync: false
+      - key: APP_PASSWORD
+        sync: false
+      - key: HOST
+        value: 0.0.0.0
+      - key: AGENT
+        value: second-listen
+      - key: MODE
+        value: inline
+      # Keep a leaked workspace password from starting a multi-hour call.
+      - key: VOICE_SESSION_MAX_DURATION_SECONDS
+        value: '600'
+      - key: DATA_DIR
+        value: /var/data
+      - key: REQUIRE_HTTPS
+        value: '1'

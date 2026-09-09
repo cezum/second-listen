@@ -95,6 +95,27 @@ class RegressionTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 archive._download('file:///etc/hostname', Path(temp) / 'out.ogg')
 
+    def test_voice_token_has_a_bounded_session_limit(self):
+        spec = importlib.util.spec_from_file_location(
+            'review_server_token', ROOT / 'deployment' / 'browser' / 'server.py')
+        server = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(server)
+        requested = []
+        with patch.dict(os.environ, {'VOICE_SESSION_MAX_DURATION_SECONDS': '120'}, clear=False):
+            with patch.object(server, 'aai', side_effect=lambda path: requested.append(path) or {'token': 'fixture'}):
+                result = server.mint_token()
+        self.assertIn('expires_in_seconds=60', requested[0])
+        self.assertIn('max_session_duration_seconds=120', requested[0])
+        self.assertEqual(result['max_session_duration_seconds'], 120)
+
+    def test_voice_token_rejects_an_overlong_session_limit(self):
+        spec = importlib.util.spec_from_file_location(
+            'review_server_token_limit', ROOT / 'deployment' / 'browser' / 'server.py')
+        server = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(server)
+        with patch.dict(os.environ, {'VOICE_SESSION_MAX_DURATION_SECONDS': '601'}, clear=False):
+            self.assertEqual(server.session_max_duration_seconds(), 600)
+
 
 if __name__ == '__main__':
     unittest.main()

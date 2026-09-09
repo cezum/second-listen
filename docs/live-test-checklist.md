@@ -139,7 +139,7 @@ buries three signals. Keep talking; let the agent interrupt you.
 |---|---|---|---|
 | 1 | Checklist-driven questions | It asks who is covering finance since Sarah left, and whether the grant move had written approval | Generic questions ("tell me more") → the playbook is being ignored; tighten `system_prompt` in `agents/second-listen.jsonc` |
 | 2 | Evidence rows | 3 rows, each with a quote in your own words | 0 rows → the agent never called the tool; re-check 0.1 |
-| 3 | Timestamped citations | Rows read `00:42 · log_evidence`, not `42s` | Wrong format → `stamp()` in `deployment/browser/app.js` |
+| 3 | Session-relative capture times | Rows read `00:42 · log_evidence`, indicating when the tool filed the evidence in the session | Wrong format → `stamp()` in `deployment/browser/app.js` |
 | 4 | Escalation banner | Red banner names the CFO departure and the grant diversion | No banner → `escalation` stayed false; check the checklist wording in the prompt |
 | 5 | Action items with owner + deadline | Each shows both, e.g. `Ben · next Monday` | Missing → the prompt does not insist on both fields |
 

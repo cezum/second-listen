@@ -15,11 +15,11 @@ deployment/telephony/      connect.py, Twilio SIP trunk and number binding
 
 ```sh
 cp .env.example .env    # ASSEMBLYAI_API_KEY
-python publish.py       # AGENT=<name> to pick one
+AGENT=second-listen python publish.py
 python deployment/browser/server.py
 ```
 
-Python 3.9+, no installs. Agents: `minimal`, `keyterms`, `turn-taking`, `byo-llm`, `http-tools`, `exa-search`, `airtable-crm`, `cal-booking`, `dtmf` (keypad entry for PCI compliance).
+Python 3.9+, no installs. The hackathon agent is `second-listen`; reusable examples include `minimal`, `keyterms`, `turn-taking`, `byo-llm`, `http-tools`, `exa-search`, `airtable-crm`, `cal-booking`, and `dtmf`.
 
 ## How it fits together
 
@@ -29,7 +29,7 @@ Agent files are API request bodies. If a field isn't in the [create-agent refere
 
 Each agent file owns an id, stored as `AGENT_ID_<NAME>`: `agents/http-tools.jsonc` uses `AGENT_ID_HTTP_TOOLS`. Unset, `publish_agent` sends `POST /v1/agents` and writes the returned id under that key. Set, it sends `PUT /v1/agents/{id}`, falling back to a create if that returns 404. A bare `AGENT_ID` overrides every per-file key and is never written to.
 
-Both deployments resolve an id the same way, through `stored_agent_id(name)`. The browser session sends only `{ agent_id }` and the phone number is bound to the same id, which is why behaviour changes belong in the agent file rather than in a deployment.
+The browser defaults to inline mode and sends the reviewed local agent configuration with each session. Stored browser mode and telephony resolve a published id through `stored_agent_id(name)`. Behaviour changes still belong in the agent file rather than in a deployment.
 
 ## Rules
 
@@ -53,4 +53,4 @@ Both deployments resolve an id the same way, through `stored_agent_id(name)`. Th
 
 ## Deploying
 
-`render.yaml` runs the browser deployment; Render sets `PORT` and prompts for `ASSEMBLYAI_API_KEY`. Set `AGENT_ID` there so the deploy connects to a published agent instead of creating its own. Anyone with the deployed URL, or the phone number, runs sessions billed to that key.
+The repository-level `render.yaml` runs the browser deployment in inline mode. Render sets `PORT` and prompts for `ASSEMBLYAI_API_KEY` plus `APP_PASSWORD`. Anyone with both the deployed URL and password, or the phone number, can run sessions billed to that key.

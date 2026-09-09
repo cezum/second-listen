@@ -15,7 +15,7 @@
 
 ## Project intro
 
-Second Listen is a voice agent for post-investment risk management. After a founder call, the investor talks through what happened at a natural pace; a structured risk playbook drives follow-up questions, and the session becomes evidence tables, ledger updates, escalation flags, and a downloadable follow-up note. A dual-engine design: live voice can listen to multilingual input but replies in English, while Universal-2 file-upload analysis keeps the recording's language in its transcript and analysis — same playbook, two paths.
+Second Listen is a voice agent for post-investment risk management. After a founder call, the investor talks through what happened at a natural pace; a structured risk playbook drives follow-up questions, and the session becomes evidence tables, ledger updates, escalation flags, and a downloadable follow-up note. Live voice can listen to multilingual input but replies in English. The upload path keeps the recording's language and applies the same evidence dimensions: a configured LLM performs the full review, while the built-in fallback surfaces keyword-matched candidates for human review.
 
 ## Run locally
 
@@ -32,7 +32,7 @@ Optional: `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL` in `.env` switch upload-m
 
 ## Lowest-friction private trial
 
-For a no-install trial, deploy `app/` to Render using `app/render.yaml`. Set
+For a no-install trial, deploy the repository to Render using the root-level `render.yaml`. Set
 `ASSEMBLYAI_API_KEY` and a strong `APP_PASSWORD` when Render asks for the
 secrets, then share the generated HTTPS URL and password with invited testers.
 The page opens in a browser; no GitHub account, Python, or local setup is

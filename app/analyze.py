@@ -6,7 +6,7 @@ playbook runs over the finished transcript and returns:
     signals   — [{dimension, quote, signal, escalation}]
     questions — [{question, for}]
 
-instead of asking them one at a time. This is the same playbook the live agent
+instead of asking them one at a time. This uses the same evidence framework as the live agent
 uses, applied to text.
 
 The analysis is pluggable. Set an OpenAI-compatible endpoint in .env:

@@ -1,0 +1,241 @@
+Second Listen 公有库审查发现与处理状态
+审查日期：2026-09-09
+
+一、审查范围和约定
+
+1. 本次审查对象仅为“公有库”目录及其 Git 跟踪历史。
+2. 比赛专用 Demo 内容不作为隐私阻塞项。
+3. 后续允许只在本地加载受控环境中的 .env，对 AssemblyAI 和可选 LLM 链路进行真实测试。
+4. 测试时不得复制、打印或提交 .env 中的密钥。
+5. 私有库目录没有找到单独的 .env；已使用公有库 app/.env（仅本地、只输出状态码）完成一次真实 AssemblyAI Token 连通性测试，返回 HTTP 200。尚未进行完整浏览器语音会话和上传音频测试。
+
+二、总体结论
+
+1. 技术符合性：通过。
+   AssemblyAI Voice Agent API 是实时语音主链路的核心组成；上传模式也实际使用 AssemblyAI Universal-2 转写，不是装饰性集成。
+
+2. 代码基础质量：通过，但仍有测试覆盖和部署持久化方面的改进项。
+   远程 Voice Agent 会话现在由服务端限制在 60–600 秒之间，Render 默认 600 秒；真实 Token 连通性测试已验证该参数生效。
+
+3. 呈现文档准确性：本地修复已完成，最终发布前仍需人工复核视频中的旧字幕/语音。
+   Short Description 已压缩到 255 字符以内；Slides PDF 已重新生成；README、提交文案和脚本已改用准确的剪辑、session-relative 时间和 follow-up action 表述。
+
+4. GitHub 提交状态：本地内容已修复，有条件通过。
+   当前仓库没有发现真实密钥，忽略规则基本正确；仍需推送本地领先远端的三个提交，并验证匿名访问。
+
+5. 完整 lablab 提交状态：等待外部材料。
+   Token 连通性已通过；仍需决定是否重录视频、推送最新提交、补充公开 Demo URL 和托管视频 URL，并确认 Starter 授权/署名。
+
+三、已经确认通过的项目
+
+1. AssemblyAI 技术链路
+   - 浏览器通过服务端生成的临时 Token 连接 AssemblyAI Voice Agent WebSocket。
+   - AssemblyAI API Key 保留在服务端，不会发送给浏览器。
+   - 实时会话支持工具调用，并在工具成功后写入 evidence/action ledger。
+   - 上传录音使用 AssemblyAI Universal-2，并支持语言检测。
+
+2. 代码和测试
+   - 15 个 Python 文件通过语法解析。
+   - JavaScript 主文件通过 Node 语法检查。
+   - 9 个单元测试全部通过。
+   - 从 Git 跟踪文件生成的干净副本也通过全部测试。
+   - DEMO_ONLY 模式的首页、健康检查、Token 拒绝和未授权写入行为符合预期。
+   - CI 已配置 Python 编译、单元测试和 JavaScript 语法检查。
+
+3. Git 和敏感信息
+   - 当前工作区干净。
+   - app/.env、运行数据、缓存和虚拟环境均被忽略。
+   - 当前文件及可达 Git 历史中未发现高置信度真实凭证，只发现文档中的占位符。
+
+4. 提交媒体规格
+   - 封面为 1920×1080，符合 16:9。
+   - Demo v8 为 1920×1080、约 3 分 44.63 秒、约 9.83 MB，符合不超过 5 分钟和 300 MB 的要求。
+   - Pitch Deck 为 11 页、16:9，页面布局和可读性良好，没有明显裁切。
+
+5. 部署平台
+   - lablab 官方要求填写 Demo Application Platform 和 Demo Application URL，没有限定必须使用某个托管平台。
+   - 本届活动页只强调项目必须基于 AssemblyAI，没有禁止 Render。
+   - 因此可以使用 Render 部署，并在提交表单中填写 Render 作为 Demo Platform。
+
+四、提交前必须解决的问题
+
+P0-1：Short Description 超过官方上限【已修复】
+
+发现：
+docs/submission-copy.md 标注使用了 250 个字符，但实际约为 280 个字符，超过官方 255 字符限制。
+
+处理：
+已改为 251 个字符，并在本地重新计数通过。
+
+P0-2：本地领先远端三个提交【待推送】
+
+发现：
+main 分支比 origin/main 领先三个提交，内容包括 Demo v8 和最新 evidence-led 文档。
+因此 README 指向 main 分支 Demo v8 的链接在远端很可能仍然无效。
+
+下一步：
+在完成文档修正后推送最新提交，并在未登录 GitHub 的浏览器中验证 README、视频、封面和 PDF 链接。
+
+P0-3：缺少完整提交所需的公开链接
+
+发现：
+submission-copy.md 中的托管视频链接和 Demo Application URL 仍为待补充状态。
+
+解决：
+1. 把演示视频上传到符合要求的视频平台，取得公开或非列出但可访问的链接。
+2. 在 Render 部署可在线体验的应用。
+3. 在 lablab 表单填写 GitHub URL、Demo Platform、Demo URL 和视频 URL。
+
+P1-1：Demo 被描述为“one uncut real run”【文档已修复，视频仍保留旧语音/气泡；是否重录待决定】
+
+发现：
+submission-copy.md 和 Slides 声称演示是未剪辑的一次真实运行，但 demo-script.md 显示两个实时片段之间剪掉了约 22 秒。
+
+处理：
+改成更准确的表述，例如：
+“A real product run with two lightly edited live-session segments.”
+
+P1-2：“timestamped citation”表述过强【已修复】
+
+发现：
+当前时间戳是工具调用发生时的 session-relative capture time，不是词级或句级对齐的录音时间戳。
+
+处理：
+把“audit back to the second it was said”等表述改为：
+“Session-relative capture time attached when the evidence is filed.”
+如果以后实现词级对齐，再恢复精准时间戳表述。
+
+P1-3：“reminders set”与实际能力不一致【不属于比赛硬性要求；新 UI 和文档已修复，旧视频可保留并加解释】
+
+发现：
+当前工具只记录 action item，没有通知调度器，也不会真的发送提醒。
+
+处理：
+把“two reminders set”改为“two follow-up actions recorded”。
+除非后续实现通知调度，否则不要使用“已设置提醒”的说法。
+
+P1-4：最终 Slides PDF 落后于当前项目定位【已修复】
+
+发现：
+最终 PDF 仍包含“two-minute debrief”“three-level risk grading”“suggested grade”等旧表述，而当前源文件和代码已转为 evidence-led playbook，最终风险决定由授权人员完成。
+
+处理：
+1. 修正 slides-source.html 中仍不准确的内容。
+2. 重新生成 SecondListen_slides.pdf。
+3. 重新逐页检查 PDF 与当前代码、README、视频是否一致。
+
+P1-5：“same playbook”并非完全相同【文档已修复】
+
+发现：
+上传分析提示包含部分明确合规红线，实时 Voice Agent 提示没有完全同步；没有配置 LLM 时，上传模式只执行确定性关键词筛查。
+
+处理：
+可以选择以下一种方式：
+1. 把实时和上传模式的共同规则抽成同一份配置；或
+2. 在文档中明确区分 live debrief、LLM upload review 和 deterministic fallback。
+
+P1-6：app/README.md 仍是上游 Starter 文档【已修复】
+
+发现：
+README 中的 clone 地址和 Deploy to Render 按钮仍指向 AssemblyAI 官方 starter，而不是 Second Listen；默认 Agent 的说明也与当前 render.yaml 不一致。
+
+处理：
+1. 把 clone 地址改为 Second Listen 公有仓库。
+2. 把 Render 部署入口改为当前仓库。
+3. Blueprint 已改为仓库根目录 render.yaml，服务 rootDir 仍为 app。
+4. 把默认 Agent 改为 second-listen。
+
+P1-7：上游 Starter 的来源和授权需要说明【来源已补充，授权仍需确认】
+
+发现：
+AGENTS.md 说明部分浏览器代码来自 AssemblyAI 官方 starter，但根目录 MIT License 只写了当前项目作者；当前官方 starter 仓库列表中没有发现明确的 LICENSE 文件。
+
+处理/待确认：
+1. 向活动方或 AssemblyAI 确认 starter 的授权方式。
+2. 在 README 或 NOTICE 中说明上游仓库地址、使用范围和本项目原创修改。
+3. 如上游提供许可证，保留其要求的版权和许可证文本。
+
+五、Render 部署步骤和注意事项
+
+1. 部署类型
+   必须部署为 Render Web Service，不能只使用 Static Site，因为后端需要生成 AssemblyAI 临时 Token。
+
+2. Blueprint 设置
+   Blueprint 已移到仓库根目录 render.yaml。
+   在 Render 控制台选择 New -> Blueprint，连接 cezum/second-listen，使用默认 Blueprint Path 即可。
+
+3. 必需环境变量
+   - ASSEMBLYAI_API_KEY
+   - APP_PASSWORD
+
+4. 可选 LLM 环境变量
+   如果需要让上传模式复现完整 LLM 分析，而不是关键词 fallback，还需要：
+   - LLM_BASE_URL
+   - LLM_API_KEY
+   - LLM_MODEL
+
+5. 访问方式
+   当前远程实时工作区要求 APP_PASSWORD，并使用 HTTP Basic Auth。
+   可以为评委创建专用强密码，在 lablab 的 Additional Information 中提供测试说明，并在比赛结束后轮换或删除密码。
+
+6. 免费实例限制
+   当前 render.yaml 使用 free plan。Render 免费 Web Service 闲置约 15 分钟后会休眠，首次唤醒可能需要约一分钟；本地文件系统是临时的，休眠、重启或重新部署后，ledger、history、archive 和 transcript cache 可能丢失。
+
+7. 持久化选择
+   - 如果评委只进行一次连续体验，免费实例基本可以使用，但应在评审前预热服务。
+   - 如果要可靠展示跨 debrief 记忆，应使用支持 Persistent Disk 的付费实例，并把磁盘挂载到 /var/data，或改用外部数据库/对象存储。
+
+8. 部署后验证
+   - 验证公开 URL 可以打开。
+   - 验证 HTTPS 和 Basic Auth。
+   - 验证 /health。
+   - 验证实时 Voice Agent 能连接、说话和调用工具。
+   - 验证上传录音流程。
+   - 验证页面刷新及服务重启后的数据行为。
+   - 用未登录和无本地缓存的浏览器重新测试。
+
+六、API 测试状态和后续测试
+
+1. 已使用公有库 app/.env 在本地完成真实 AssemblyAI Token 连通性测试，返回 HTTP 200；没有输出或保存密钥。
+2. 验证临时 Token 生成、WebSocket 连接、音频输入、转写、回复和工具调用。
+3. 完成一次真实上传转写测试。
+4. 如果私有 .env 配置了 LLM，验证上传分析的 LLM 路径及异常回退。
+5. 记录测试结果，但不得在日志、截图、报告或 Git 中暴露任何密钥。
+6. 检查测试产生的数据文件仍位于 Git 忽略范围内。
+
+七、非阻塞或等待外部决定的问题
+
+1. 增加浏览器行为、上传成功路径、上游 API 异常和文档一致性测试。
+2. `.env.example` 已补充 APP_PASSWORD、HOST、MODE、PORT、DEMO_ONLY 和可选 LLM 配置说明。
+3. 根 README 和 NOTICE 已补充官方 Starter 与 Second Listen 原创贡献的边界。
+4. 删除或解释 Demo v7 和 _test_tone.wav，避免评委误用旧材料。
+5. `demo-script.md` 中的 PII redaction 已删除；roadmap 中仍作为可选未来能力保留。
+6. 虽然比赛专用 Demo 不作为隐私阻塞项，公开应用仍应提示用户不要上传真实敏感投资材料。
+
+八、最终提交检查清单
+
+[x] Short Description 不超过 255 字符
+[x] README、submission-copy、Demo script 和 Slides 使用一致表述
+[x] 文档中删除“完全未剪辑”的错误声明
+[x] 把精准时间戳改为 session-relative capture time
+[x] 新 UI 和文档把 reminder 改为 recorded follow-up action
+[x] 重新生成并逐页检查 Slides PDF
+[x] 修复 app/README.md 的仓库地址和 Render 部署入口
+[x] 补充 AssemblyAI Starter 来源说明；授权仍需确认
+[ ] 使用私有 .env 完成真实 AssemblyAI 链路测试
+[ ] 推送本地领先远端的三个提交
+[ ] 确认 GitHub 仓库为 Public
+[ ] 确认远端 CI 通过
+[ ] 上传演示视频并取得可访问链接
+[ ] 部署 Render Web Service
+[ ] 验证公开 Demo URL 和评委访问方式
+[ ] 在 lablab 表单填写 Render、Demo URL、GitHub URL 和视频 URL
+
+九、当前 Go / No-Go
+
+技术合规：Go
+代码基础质量：Go，带改进项
+当前 GitHub 材料直接提交：No-Go
+当前完整 lablab 提交：No-Go
+
+完成 P0 项、主要 P1 文档修正、真实 API 测试和 Render 部署验证后，可以进入最终提交复查。

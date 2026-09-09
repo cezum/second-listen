@@ -321,7 +321,7 @@ function renderLedger(ledger) {
     const eid = 'A-' + pad(i + 1), fresh = !seenEntries.has(eid + current)
     seenEntries.add(eid + current)
     const callout = sampleMode && i === actions.length - 1
-      ? (actions.length > 1 ? 'Two reminders set' : 'Reminder set')
+      ? (actions.length > 1 ? 'Two actions recorded' : 'Action recorded')
       : ''
     listActions.append(actionRow(event, eid, fresh, callout))
   })
