@@ -2,7 +2,7 @@
 
 Use this checklist with [`hackathon-demo-script-2min.md`](hackathon-demo-script-2min.md).
 v7 keeps v5's one-long-live-segment spine and drops the litigation follow-up.
-v8 is the same cut with the three callouts rebuilt as anchored bubbles (3:42).
+v8 is the same cut with the three callouts rebuilt as anchored bubbles (3:44).
 
 ## Before recording
 
@@ -26,13 +26,13 @@ v8 is the same cut with the three callouts rebuilt as anchored bubbles (3:42).
 | Time | Section | Audio | Callout |
 |---|---|---|---|
 | 0:00–0:17 | Intro A: typewriter card on beige (4 lines, sequential fade-in) | AI narration (NARR_A): problem statement, transcription is solved, judgment is not | — |
-| 0:17–0:40 | Intro B: entry screen (static, "two doors") | AI narration (NARR_B): playbook compiled into skills, what the partner does, what is about to happen | — |
-| 0:40–2:45 | Live part 1: trial3 [9.5, 135.8] (126.3 s) — natural pacing, no internal cuts. Walks through follow-ups #1, #2, #3. | Real audio. 3 Luke mutes in this segment. | (1) bubble "Prior follow-ups, reopened" @ 0:41–0:51, tail on the follow-up list<br>(2) bubble "Reminder set" @ 1:35–1:43, tail on the reminder just filed<br>Persistent: "LIVE DEBRIEF · PROJECT 8 · SECOND CHECK-IN" bottom-left |
-| 2:45–3:14 | Live part 2: trial3 [157.7, 186.5] (28.8 s) — "Since all follow-ups are still in progress, let's move on" / "Was there anything else new..." / "I've set two reminders for you" | Real audio | (3) bubble "Two reminders set" @ 2:59–3:11, tail on the actions just created |
-| 3:14–3:26 | Upload: Project 9 static report frame | AI narration (NARR_UPLOAD): same skills run on a recording — drop in, get the same list | — |
-| 3:26–3:42 | Outro: typewriter card on beige (5 lines + footer, sequential fade-in) | AI narration (NARR_OUT): everything is on the record, next week the partner opens with them, Second Listen | — |
+| 0:17–0:42 | Intro B: entry screen (static, "two doors") | AI narration (NARR_B): playbook compiled into skills, what the partner does, what is about to happen | — |
+| 0:42–2:48 | Live part 1: trial3 [9.5, 135.8] (126.3 s) — natural pacing, no internal cuts. Walks through follow-ups #1, #2, #3. | Real audio. 3 Luke mutes in this segment. | (1) bubble "Prior follow-ups, reopened" @ 0:43–0:53, tail on the follow-up list<br>(2) bubble "Reminder set" @ 1:37–1:45, tail on the reminder just filed<br>Persistent: "LIVE DEBRIEF · PROJECT 8 · SECOND CHECK-IN" bottom-left |
+| 2:48–3:17 | Live part 2: trial3 [157.7, 186.5] (28.8 s) — "Since all follow-ups are still in progress, let's move on" / "Was there anything else new..." / "I've set two reminders for you" | Real audio | (3) bubble "Two reminders set" @ 3:02–3:14, tail on the actions just created |
+| 3:17–3:29 | Upload: Project 9 static report frame | AI narration (NARR_UPLOAD): same skills run on a recording — drop in, get the same list | — |
+| 3:29–3:44 | Outro: typewriter card on beige (5 lines + footer, sequential fade-in) | AI narration (NARR_OUT): everything is on the record, next week the partner opens with them, Second Listen | — |
 
-Total: 222 s = 3:42.
+Total: 224.6 s = 3:44.
 
 ## Why the structure is what it is
 
@@ -83,17 +83,21 @@ Total: 222 s = 3:42.
   describes rather than in the margin. Moving one is a single coordinate.
 - No music.
 
-## Total runtime is 3:42 — this is a tradeoff, not an oversight
+## Total runtime is 3:44 — this is a tradeoff, not an oversight
 
 - v5 was 3:57. v6 had a bug that let the live segment run 11 s over and
   ended at 3:47. v7 fixed the bug and added the closing-card narration
-  (3:44). v8 is the same cut with the callouts rebuilt as anchored bubbles,
-  and the narration re-timed to 3:42.
+  (3:44). v8 is the same cut with the callouts rebuilt as anchored bubbles.
+  A narration-truncation guard (each edge-tts voice file is checked for a
+  quiet tail and re-synthesised if it ends mid-word) keeps every cut 3:44;
+  the segment lengths are derived from lead-in + real speech + trailing
+  silence, so a segment can never end before its sentence is finished.
 - If a hard 3-minute cap is required, the next step is to drop the live
   part 2 entirely (loses the "two reminders set" bubble — not recommended)
   or to compress intro B / upload / outro by ~45 s combined.
-- If a fully uncut 3:58 version is preferred, set `TRIM_LITIGATION = False`
-  at the top of `build_demo_v8.py` and re-run.
+- If a fully uncut version is preferred, set `TRIM_LITIGATION = False` at
+  the top of `build_demo_v8.py` and re-run; that cut runs a few seconds
+  longer (intro B alone gains ~2.5 s once it is allowed to finish).
 - v3 / v4 / v5 / v7 still exist on disk for shorter-length fallbacks.
 
 ## Final quality check (verified on the finished v8 video)
@@ -133,6 +137,6 @@ Total: 222 s = 3:42.
   audio with 3 Luke mutes for the live section), joined by ffmpeg concat.
 - Final mux adds fade in / fade out.
 - One switch at the top of the script — `TRIM_LITIGATION` — toggles
-  between the 3:42 cut and the 3:58 uncut cut.
+  between the 3:44 cut and the uncut cut.
 - Callout bubbles are rendered once per build (HTML -> headless-browser
   screenshot -> transparent PNG) and reused across segments.
