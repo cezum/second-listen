@@ -142,12 +142,12 @@ Twilio passes the call to AssemblyAI over SIP, so nothing in this repo sits in t
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/cezum/second-listen)
 
-Render reads the repository-level [render.yaml](../render.yaml) and prompts for `ASSEMBLYAI_API_KEY` and `APP_PASSWORD`. Set both: the first is the AssemblyAI credential, and the second protects the remote workspace from anyone who discovers the URL. It sets `PORT` itself. The other values arrive with defaults you can change under Environment on the service:
+Render reads the repository-level [render.yaml](../render.yaml) and prompts for `ASSEMBLYAI_API_KEY`. It sets `PORT` itself. The public contest configuration uses five-minute Voice Agent sessions plus conservative in-process token and upload limits. The other values arrive with defaults you can change under Environment on the service:
 
 | Variable | Default | What it does |
 | --- | --- | --- |
 | `ASSEMBLYAI_API_KEY` | prompted | Stays on the server. Never sent to the page. |
-| `APP_PASSWORD` | prompted | HTTP Basic Auth password for the remote workspace. |
+| `APP_PASSWORD` | unset | Optional HTTP Basic Auth password for a private remote workspace. |
 | `AGENT` | `second-listen` | Which `agents/<name>.jsonc` the service sends with each inline session. |
 | `MODE` | `inline` | Sends the reviewed local agent config with each session. |
 

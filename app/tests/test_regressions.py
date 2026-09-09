@@ -113,8 +113,25 @@ class RegressionTests(unittest.TestCase):
             'review_server_token_limit', ROOT / 'deployment' / 'browser' / 'server.py')
         server = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(server)
-        with patch.dict(os.environ, {'VOICE_SESSION_MAX_DURATION_SECONDS': '601'}, clear=False):
-            self.assertEqual(server.session_max_duration_seconds(), 600)
+        with patch.dict(os.environ, {'VOICE_SESSION_MAX_DURATION_SECONDS': '301'}, clear=False):
+            self.assertEqual(server.session_max_duration_seconds(), 300)
+
+    def test_public_token_capacity_is_limited_per_client_and_globally(self):
+        spec = importlib.util.spec_from_file_location(
+            'review_server_public_capacity', ROOT / 'deployment' / 'browser' / 'server.py')
+        server = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(server)
+        empty_grants = {operation: [] for operation in server.PUBLIC_OPERATION_LIMITS}
+        with patch.object(server, 'PUBLIC_OPERATION_GRANTS', empty_grants):
+            self.assertIsNotNone(server.reserve_public_operation('token', 'visitor-a', now=0))
+            self.assertIsNotNone(server.reserve_public_operation('token', 'visitor-a', now=1))
+            self.assertIsNone(server.reserve_public_operation('token', 'visitor-a', now=2))
+
+        empty_grants = {operation: [] for operation in server.PUBLIC_OPERATION_LIMITS}
+        with patch.object(server, 'PUBLIC_OPERATION_GRANTS', empty_grants):
+            for index in range(server.PUBLIC_OPERATION_LIMITS['token']['global']):
+                self.assertIsNotNone(server.reserve_public_operation('token', f'visitor-{index}', now=index))
+            self.assertIsNone(server.reserve_public_operation('token', 'visitor-overflow', now=10))
 
 
 if __name__ == '__main__':

@@ -39,7 +39,7 @@ The 3:44 demo uses real product runs: a second check-in call that reopens last w
 
 ## Deploy to Render
 
-This repository includes a root-level [`render.yaml`](render.yaml). In Render, create a Blueprint from this repository and provide `ASSEMBLYAI_API_KEY` plus a strong `APP_PASSWORD`. The service runs the real browser application over HTTPS; its server-only API key mints single-use 60-second tokens, and every live session is capped at 10 minutes. Optional `LLM_BASE_URL`, `LLM_API_KEY`, and `LLM_MODEL` variables enable the full upload-review path.
+This repository includes a root-level [`render.yaml`](render.yaml). In Render, create a Blueprint from this repository and provide `ASSEMBLYAI_API_KEY`. The service runs the real browser application over HTTPS; its server-only API key mints single-use 60-second tokens, and every live session is capped at five minutes. The public contest demo also permits at most two token requests per visitor and six total per 15 minutes; recording uploads are limited to one per visitor and three total per hour. Optional `LLM_BASE_URL`, `LLM_API_KEY`, and `LLM_MODEL` variables enable the full upload-review path.
 
 The free Render plan is suitable for a short trial, but it sleeps when idle and its filesystem is ephemeral. Use a paid persistent disk mounted at `/var/data`, or an external data store, if ledger and cross-debrief history must survive restarts.
 

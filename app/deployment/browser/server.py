@@ -2,7 +2,9 @@
 """Second Listen browser deployment. Python standard library only.
 
 Default: local, inline voice config. DEMO_ONLY=1 runs without API credentials.
-Remote live deployments require APP_PASSWORD and HTTPS at the reverse proxy.
+Remote live deployments require HTTPS at the reverse proxy. APP_PASSWORD is an
+optional extra gate; the public contest demo uses bounded, in-memory capacity
+limits instead.
 """
 import base64
 import copy
@@ -43,9 +45,20 @@ AGENT = None
 PAGE = ''
 DIMENSIONS = {'operations', 'exit_potential', 'self_funding', 'team_integrity', 'financial_health'}
 TOKEN_EXPIRES_IN_SECONDS = 60
-DEFAULT_SESSION_MAX_DURATION_SECONDS = 600
+DEFAULT_SESSION_MAX_DURATION_SECONDS = 300
 MIN_SESSION_MAX_DURATION_SECONDS = 60
-MAX_SESSION_MAX_DURATION_SECONDS = 600
+MAX_SESSION_MAX_DURATION_SECONDS = 300
+
+# Public demo guardrails. These limits are intentionally conservative: a normal
+# visitor needs one token, while a shared contest link must not mint unlimited
+# billable Voice Agent sessions. They reset when this single free-tier process
+# restarts, so they complement (rather than replace) the upstream account limit.
+PUBLIC_OPERATION_LIMITS = {
+    'token': {'window_seconds': 15 * 60, 'per_client': 2, 'global': 6},
+    'upload': {'window_seconds': 60 * 60, 'per_client': 1, 'global': 3},
+}
+PUBLIC_OPERATION_GRANTS = {operation: [] for operation in PUBLIC_OPERATION_LIMITS}
+PUBLIC_OPERATION_LOCK = threading.Lock()
 
 
 class TokenError(Exception):
@@ -65,7 +78,7 @@ def demo_only():
 
 
 def session_max_duration_seconds():
-    """Return a bounded live-session limit so a leaked password cannot buy hours."""
+    """Return a bounded live-session limit for the public contest demo."""
     raw = os.environ.get('VOICE_SESSION_MAX_DURATION_SECONDS', str(DEFAULT_SESSION_MAX_DURATION_SECONDS))
     try:
         seconds = int(raw)
@@ -76,6 +89,38 @@ def session_max_duration_seconds():
         debug_log('out-of-range VOICE_SESSION_MAX_DURATION_SECONDS; using default')
         return DEFAULT_SESSION_MAX_DURATION_SECONDS
     return seconds
+
+
+def reserve_public_operation(operation, client, now=None):
+    """Reserve one bounded public operation, returning its opaque reservation.
+
+    The global cap remains effective if a caller rotates spoofable forwarded IP
+    headers. Reservation happens before the upstream request so concurrent
+    callers cannot all pass the same capacity check.
+    """
+    rule = PUBLIC_OPERATION_LIMITS[operation]
+    now = time.monotonic() if now is None else now
+    with PUBLIC_OPERATION_LOCK:
+        grants = PUBLIC_OPERATION_GRANTS[operation]
+        cutoff = now - rule['window_seconds']
+        grants[:] = [grant for grant in grants if grant[0] > cutoff]
+        if len(grants) >= rule['global']:
+            return None
+        if sum(grant[1] == client for grant in grants) >= rule['per_client']:
+            return None
+        reservation = (now, client)
+        grants.append(reservation)
+        return reservation
+
+
+def release_public_operation(operation, reservation):
+    """Release a reservation when no upstream request was successfully made."""
+    with PUBLIC_OPERATION_LOCK:
+        grants = PUBLIC_OPERATION_GRANTS[operation]
+        try:
+            grants.remove(reservation)
+        except ValueError:
+            pass
 
 
 def public_agent(agent):
@@ -259,6 +304,26 @@ class Handler(BaseHTTPRequestHandler):
             return False
         return True
 
+    def _client_key(self):
+        """Return a best-effort client key without trusting it as the only cap."""
+        forwarded = self.headers.get('X-Forwarded-For', '')
+        if forwarded:
+            candidate = forwarded.split(',', 1)[0].strip()
+            if candidate:
+                return candidate[:128]
+        return self.client_address[0]
+
+    def _reserve_public_operation(self, operation):
+        reservation = reserve_public_operation(operation, self._client_key())
+        if reservation is not None:
+            return reservation
+        window_minutes = PUBLIC_OPERATION_LIMITS[operation]['window_seconds'] // 60
+        self._json(429, {
+            'error': f'Public demo capacity is temporarily full. Please retry in {window_minutes} minutes.',
+            'code': 'demo_capacity_limited',
+        })
+        return None
+
     def _body(self, limit=128 * 1024, raw=False):
         if self.headers.get('Transfer-Encoding'):
             raise ValueError('Chunked requests are not supported')
@@ -337,7 +402,14 @@ class Handler(BaseHTTPRequestHandler):
                 if demo_only():
                     self._json(503, {'error': 'Live voice is disabled in preview mode'})
                 else:
-                    self._json(200, mint_token())
+                    reservation = self._reserve_public_operation('token')
+                    if reservation is None:
+                        return
+                    try:
+                        self._json(200, mint_token())
+                    except Exception:
+                        release_public_operation('token', reservation)
+                        raise
             elif path == '/agent':
                 self._json(200, public_agent(AGENT['config']) if AGENT.get('config') else public_agent(aai(f"/agents/{AGENT['id']}")))
             elif path in ('/app.js', '/workspace.js', '/styles.css'):
@@ -371,7 +443,11 @@ class Handler(BaseHTTPRequestHandler):
         path = urlsplit(self.path).path
         try:
             if path == '/api/upload':
+                reservation = self._reserve_public_operation('upload')
+                if reservation is None:
+                    return
                 if not UPLOAD_SLOTS.acquire(blocking=False):
+                    release_public_operation('upload', reservation)
                     self._json(429, {'error': 'Two recordings are already processing. Try again shortly.'})
                     return
                 try:
@@ -502,8 +578,6 @@ def main():
     global AGENT, PAGE, LEDGER, GATE_LOG, TRIALS_DIR, TRANSCRIPT_CACHE
     load_env()
     host = os.environ.get('HOST', '127.0.0.1')
-    if host not in ('127.0.0.1', 'localhost', '::1') and not demo_only() and not os.environ.get('APP_PASSWORD'):
-        sys.exit('Remote live workspaces require APP_PASSWORD. Use DEMO_ONLY=1 for a public sample preview.')
     name = os.environ.get('AGENT', 'second-listen')
     mode = os.environ.get('MODE', 'inline')
     if not demo_only():

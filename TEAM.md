@@ -32,13 +32,7 @@ Optional: `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL` in `.env` switch upload-m
 
 ## Lowest-friction private trial
 
-For a no-install trial, deploy the repository to Render using the root-level `render.yaml`. Set
-`ASSEMBLYAI_API_KEY` and a strong `APP_PASSWORD` when Render asks for the
-secrets, then share the generated HTTPS URL and password with invited testers.
-The page opens in a browser; no GitHub account, Python, or local setup is
-needed. The Sample Debrief is available without spending API credits. Live
-voice and recording upload consume the configured AssemblyAI/LLM quotas, so
-keep the link private and tell testers before they start either mode.
+For a no-install trial, deploy the repository to Render using the root-level `render.yaml` and set `ASSEMBLYAI_API_KEY` when prompted. The public contest demo uses a five-minute session cap plus small per-visitor and global token/upload limits. The page opens in a browser; no GitHub account, Python, or local setup is needed. The Sample Debrief is available without spending API credits. Live voice and recording upload consume the configured AssemblyAI/LLM quotas, so monitor the AssemblyAI balance and remove the deployment or rotate the key after the event.
 
 ## Zero third-party dependencies
 

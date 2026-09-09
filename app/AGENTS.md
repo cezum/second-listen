@@ -53,4 +53,4 @@ The browser defaults to inline mode and sends the reviewed local agent configura
 
 ## Deploying
 
-The repository-level `render.yaml` runs the browser deployment in inline mode. Render sets `PORT` and prompts for `ASSEMBLYAI_API_KEY` plus `APP_PASSWORD`. Anyone with both the deployed URL and password, or the phone number, can run sessions billed to that key.
+The repository-level `render.yaml` runs the browser deployment in inline mode. Render sets `PORT` and prompts for `ASSEMBLYAI_API_KEY`. The public contest demo limits token minting and upload processing in-process, but anyone who reaches the public URL can consume the bounded AssemblyAI capacity. Set optional `APP_PASSWORD` only for a private deployment.

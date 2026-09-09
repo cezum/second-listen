@@ -15,13 +15,13 @@ Second Listen 公有库审查发现与处理状态
    AssemblyAI Voice Agent API 是实时语音主链路的核心组成；上传模式也实际使用 AssemblyAI Universal-2 转写，不是装饰性集成。
 
 2. 代码基础质量：通过，但仍有测试覆盖和部署持久化方面的改进项。
-   远程 Voice Agent 会话现在由服务端限制在 60–600 秒之间，Render 默认 600 秒；真实 Token 连通性测试已验证该参数生效。
+   公开 Voice Agent 会话由服务端限制在 60–300 秒之间，Render 默认 300 秒；公开 Demo 的 token 与上传入口另有进程内限流；真实 Token 连通性测试已验证限时参数生效。
 
 3. 呈现文档准确性：本地修复已完成，最终发布前仍需人工复核视频中的旧字幕/语音。
    Short Description 已压缩到 255 字符以内；Slides PDF 已重新生成；README、提交文案和脚本已改用准确的剪辑、session-relative 时间和 follow-up action 表述。
 
-4. GitHub 提交状态：本地内容已修复，有条件通过。
-   当前仓库没有发现真实密钥，忽略规则基本正确；仍需推送本地领先远端的三个提交，并验证匿名访问。
+4. GitHub 提交状态：通过。
+   当前仓库与可达 Git 历史均未发现真实密钥；`main` 已推送至公开仓库 cezum/second-listen。
 
 5. 完整 lablab 提交状态：等待外部材料。
    Token 连通性已通过；仍需决定是否重录视频、推送最新提交、补充公开 Demo URL 和托管视频 URL，并确认 Starter 授权/署名。
@@ -67,14 +67,14 @@ docs/submission-copy.md 标注使用了 250 个字符，但实际约为 280 个�
 处理：
 已改为 251 个字符，并在本地重新计数通过。
 
-P0-2：本地领先远端三个提交【待推送】
+P0-2：本地领先远端三个提交【已推送】
 
 发现：
 main 分支比 origin/main 领先三个提交，内容包括 Demo v8 和最新 evidence-led 文档。
 因此 README 指向 main 分支 Demo v8 的链接在远端很可能仍然无效。
 
-下一步：
-在完成文档修正后推送最新提交，并在未登录 GitHub 的浏览器中验证 README、视频、封面和 PDF 链接。
+处理：
+已推送并确认 cezum/second-listen 为公开仓库，默认分支为 main。
 
 P0-3：缺少完整提交所需的公开链接
 
@@ -166,7 +166,6 @@ AGENTS.md 说明部分浏览器代码来自 AssemblyAI 官方 starter，但根�
 
 3. 必需环境变量
    - ASSEMBLYAI_API_KEY
-   - APP_PASSWORD
 
 4. 可选 LLM 环境变量
    如果需要让上传模式复现完整 LLM 分析，而不是关键词 fallback，还需要：
@@ -175,8 +174,7 @@ AGENTS.md 说明部分浏览器代码来自 AssemblyAI 官方 starter，但根�
    - LLM_MODEL
 
 5. 访问方式
-   当前远程实时工作区要求 APP_PASSWORD，并使用 HTTP Basic Auth。
-   可以为评委创建专用强密码，在 lablab 的 Additional Information 中提供测试说明，并在比赛结束后轮换或删除密码。
+   比赛 Demo 公开可访问，避免假定评委会索取密码。服务端限制临时 Voice Agent token 为每访客 15 分钟内 2 个、全站 15 分钟内 6 个；上传为每访客每小时 1 个、全站每小时 3 个。`APP_PASSWORD` 保留为私有部署的可选 HTTP Basic Auth 开关，不写入比赛 Blueprint。
 
 6. 免费实例限制
    当前 render.yaml 使用 free plan。Render 免费 Web Service 闲置约 15 分钟后会休眠，首次唤醒可能需要约一分钟；本地文件系统是临时的，休眠、重启或重新部署后，ledger、history、archive 和 transcript cache 可能丢失。
@@ -187,7 +185,7 @@ AGENTS.md 说明部分浏览器代码来自 AssemblyAI 官方 starter，但根�
 
 8. 部署后验证
    - 验证公开 URL 可以打开。
-   - 验证 HTTPS 和 Basic Auth。
+   - 验证 HTTPS、公开首页和 token/upload 限流。
    - 验证 /health。
    - 验证实时 Voice Agent 能连接、说话和调用工具。
    - 验证上传录音流程。
@@ -206,7 +204,7 @@ AGENTS.md 说明部分浏览器代码来自 AssemblyAI 官方 starter，但根�
 七、非阻塞或等待外部决定的问题
 
 1. 增加浏览器行为、上传成功路径、上游 API 异常和文档一致性测试。
-2. `.env.example` 已补充 APP_PASSWORD、HOST、MODE、PORT、DEMO_ONLY 和可选 LLM 配置说明。
+2. `.env.example` 已补充 APP_PASSWORD（私有部署可选）、HOST、MODE、PORT、DEMO_ONLY 和可选 LLM 配置说明。
 3. 根 README 和 NOTICE 已补充官方 Starter 与 Second Listen 原创贡献的边界。
 4. 删除或解释 Demo v7 和 _test_tone.wav，避免评委误用旧材料。
 5. `demo-script.md` 中的 PII redaction 已删除；roadmap 中仍作为可选未来能力保留。

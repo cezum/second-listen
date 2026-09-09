@@ -51,9 +51,9 @@ In `MODE=stored` the session message contains only `{ agent_id }`; prompt, voice
 | `AGENT_ID` | Overrides the per-file keys, for serving one specific agent. |
 | `MODE` | `inline` (default) sends the local `agents/<AGENT>.jsonc` with each session; `stored` connects to a published agent id. |
 | `PORT` | Defaults to 3000. If the port is occupied, startup fails with the exact port and a process-conflict message. |
-| `HOST` | Defaults to `127.0.0.1`. Set `0.0.0.0` only when a container platform routes to the port — a remote host without `APP_PASSWORD` refuses to start. |
-| `APP_PASSWORD` | Required for remote hosts. All endpoints then require HTTP Basic auth with this password. |
-| `VOICE_SESSION_MAX_DURATION_SECONDS` | Defaults to 600. Limits a completed Voice Agent session to 60–600 seconds; larger or invalid values safely fall back to 600. |
+| `HOST` | Defaults to `127.0.0.1`. Set `0.0.0.0` when a container platform routes to the port. |
+| `APP_PASSWORD` | Optional. When set, all application endpoints require HTTP Basic auth with this password. |
+| `VOICE_SESSION_MAX_DURATION_SECONDS` | Defaults to 300. Limits a completed Voice Agent session to 60–300 seconds; larger or invalid values safely fall back to 300. |
 | `DATA_DIR` | Root for ledger, history, archives and transcript cache. Use a mounted persistent path for durable hosted data. |
 | `REQUIRE_HTTPS` | Set to `1` for remote deployments; requests without HTTPS forwarding are rejected. |
 
@@ -63,7 +63,7 @@ The server is [server.py](server.py), the page is [index.html](index.html) and t
 
 ## Hosting
 
-The repository-level [`render.yaml`](../../../render.yaml) is configured for one-click deploys. Render prompts for `ASSEMBLYAI_API_KEY` and `APP_PASSWORD` during Blueprint creation and sets `PORT` itself. `HOST` is preset to `0.0.0.0` in the Blueprint — containers must listen on all interfaces — while local runs stay on loopback. `AGENT=second-listen` and `MODE=inline` are explicit defaults.
+The repository-level [`render.yaml`](../../../render.yaml) is configured for one-click deploys. Render prompts only for `ASSEMBLYAI_API_KEY` during Blueprint creation and sets `PORT` itself. `HOST` is preset to `0.0.0.0` in the Blueprint — containers must listen on all interfaces — while local runs stay on loopback. `AGENT=second-listen` and `MODE=inline` are explicit defaults. For the public contest demo, token minting is limited to two per visitor and six total per 15 minutes; uploads are limited to one per visitor and three total per hour.
 
 Inline mode sends the reviewed local agent configuration with every session and does not create a stored agent during deployment. If you intentionally switch to `MODE=stored`, set `AGENT_ID` to an agent you already published and tested.
 
