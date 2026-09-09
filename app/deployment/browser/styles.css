@@ -177,6 +177,10 @@ body.sampling #sample-flag,body.sampling #sample-close{display:inline-flex}
 .entry.action{align-items:start}
 .entry.action .eid{padding-top:1px}
 .task{margin:0;font-size:14px;font-weight:600;line-height:1.5}
+.sample-callout{position:relative;display:inline-flex;align-items:center;margin:11px 0 0 14px;padding:5px 10px;border:1px solid var(--red-line);border-radius:9px;background:var(--red-soft);color:var(--red);font:700 10px/1.2 var(--mono);letter-spacing:.8px;text-transform:uppercase}
+.sample-callout::before,.sample-callout::after{content:'';position:absolute;left:14px;width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent}
+.sample-callout::before{top:-8px;border-bottom:8px solid var(--red-line)}
+.sample-callout::after{top:-6px;border-bottom:6px solid var(--red-soft)}
 .task-meta{font:10.5px var(--mono);color:var(--ink-3);margin-top:4px}
 
 .commit{display:flex;gap:12px;align-items:flex-start;padding:11px 0;border-top:1px dashed #e9e5dc}

@@ -31,7 +31,7 @@ Expected agent follow-ups:
 
 1. **Hook (15s)** — title card: *"You said it out loud. You didn't realize it was a signal."*
 2. **Problem (30s)** — dashboard signals vs conversation signals; quarterly memory loss.
-3. **Live demo (2 min)** — play the monologue → agent interrupts twice with checklist questions → evidence table with timestamps ("00:42 — you said the CFO left") → grade suggestion B→C with citations → red escalation banner → drafted follow-up note.
+3. **Live demo** — play the monologue → agent interrupts twice with checklist questions → evidence table with timestamps ("00:42 — you said the CFO left") → evidence-based risk suggestion with citations → red escalation banner → drafted follow-up note.
 4. **Tech (45s)** — Voice Agent API, playbook-as-skill, Action Items, session history, PII redaction.
 5. **Roadmap & close (30s)** — pluggable playbooks (legal checklists, credit due-diligence, safety inspections); post-investment management is the first slot.
 

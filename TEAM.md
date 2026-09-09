@@ -15,7 +15,7 @@
 
 ## Project intro
 
-Second Listen is a voice agent for post-investment risk management. After a founder call, the investor debriefs it for two minutes; a structured risk-grading playbook drives follow-up questions, and the session becomes evidence tables, ledger updates, escalation flags, and a downloadable follow-up note. A dual-engine design: live voice for the debrief itself, Universal-2 file-upload analysis (Chinese works) for pre-recorded debriefs — same playbook, two paths.
+Second Listen is a voice agent for post-investment risk management. After a founder call, the investor talks through what happened at a natural pace; a structured risk playbook drives follow-up questions, and the session becomes evidence tables, ledger updates, escalation flags, and a downloadable follow-up note. A dual-engine design: live voice can listen to multilingual input but replies in English, while Universal-2 file-upload analysis keeps the recording's language in its transcript and analysis — same playbook, two paths.
 
 ## Run locally
 
