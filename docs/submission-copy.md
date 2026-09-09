@@ -37,8 +37,11 @@ A second engine covers recordings. Universal-2 transcribes the file (Chinese wor
 - Slide deck PDF → `slides/SecondListen_slides.pdf` (11 pages, 16:9)
 - Demo video → `demo/SecondListen_demo_v8.mp4` (3:44, 1080p)
 
-## Still needed before submitting
+## Submission links (verified)
 
-1. Push the final reviewed commits to `https://github.com/cezum/second-listen` and verify anonymous access
-2. Video link (upload v8 to YouTube Unlisted, then paste the URL)
-3. Demo application platform + URL (deploy the root `render.yaml` to Render)
+- GitHub repository: `https://github.com/cezum/second-listen`
+- Video presentation (YouTube Unlisted): `https://youtu.be/51TKhR5Vg48`
+- Demo application (Render): `https://second-listen-wcap.onrender.com`
+
+The YouTube video is 3:45, under the LabLab five-minute limit. The repository is
+public and the Render health check is passing anonymously.
