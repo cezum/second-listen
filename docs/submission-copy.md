@@ -10,20 +10,22 @@
 Second Listen
 ```
 
-## Short description (≤255 chars — 251 used)
+## Short description (≤255 chars — 238 used)
 
 ```
-Second Listen turns spoken post-investment debriefs into structured evidence. Powered by AssemblyAI Voice Agents and Universal-2, it captures risk signals, asks focused follow-ups, records agreed actions, and carries open items into the next check-in.
+After a founder call, don’t let the risk disappear into memory. Second Listen is a voice debrief partner built on AssemblyAI: it finds hidden signals, asks the follow-up you might skip, and turns talk into evidence, owners, and deadlines.
 ```
 
-## Long description (≥100 words — 235 used)
+## Long description (≥100 words — 247 used)
 
 ```
-Every fund tracks metrics. Nobody captures what they hear. Post-investment risk arrives through two channels: dashboard signals, which monitoring tools already cover, and conversation signals - a CFO leaving, grant money quietly moved to payroll, a lawsuit mentioned in passing - which exist only in conversation and decay with memory before any form captures them.
+After a founder call, the most important risk may be the sentence nobody wrote down: the CFO left, grant money moved to payroll, or a lawsuit surfaced in passing. Second Listen is a voice debrief partner for investors. Press Start debrief and talk naturally about what happened. It listens for signals hidden in the story, asks the next checklist question one at a time, and records each confirmed signal with the investor’s own quote and the moment it was captured. When a follow-up is agreed, it saves the owner and deadline. At the next check-in, it opens with unfinished actions instead of making the partner reconstruct them from memory.
 
-Second Listen closes that gap. After a founder call, board meeting or site visit, the investor talks to the agent at a natural pace, casually retelling what happened. A post-investment risk playbook - evidence dimensions and an escalation checklist - guides the live agent: it listens for risk signals hidden in small talk, asks focused follow-up questions one at a time, and files each confirmed signal with a short quote and session-relative capture time. Checklist triggers are flagged for human review. When the investor explicitly agrees to follow up, the agent records an action with an owner and a due date. Each company keeps one JSON history file, so the next debrief opens by reopening the previous session's open actions. The submission video shows a real second check-in, with one quiet section removed for length.
+The submission video shows a recorded live-mode product run of a second check-in for a fictional portfolio company. Previous follow-ups reopen first; new evidence is captured with its source quote; and two agreed actions are written to the ledger. Want to try it? Open the live demo with a fictional company and describe what changed.
 
-A second engine covers recordings. Universal-2 transcribes the file (Chinese works today), then the same evidence dimensions produce candidate signals, escalation flags and follow-up questions. A configured OpenAI-compatible LLM performs the full upload review; without one, a deterministic keyword fallback marks candidates for human review. The backend is Python standard library only - requirements.txt installs nothing. The playbook is MIT-licensed; post-investment is the first domain slot.
+Prefer not to talk live? Upload a recording. Universal-2 transcribes multilingual audio, including Chinese, and the same evidence framework returns candidate signals, escalation flags, and open questions. With an OpenAI-compatible LLM configured, the upload path performs the full review; without one, a deterministic fallback still surfaces candidates for human review.
+
+This is not a generic meeting summarizer. It is a domain playbook compiled into a voice agent: ask what matters, preserve the quote, and keep the final risk decision with an authorized human. Built with AssemblyAI Voice Agent API, Python, WebSocket, and JavaScript.
 ```
 
 ## Tracks & technologies (suggested picks)
@@ -34,7 +36,7 @@ A second engine covers recordings. Universal-2 transcribes the file (Chinese wor
 ## Media assets (ready)
 
 - Cover image 16:9 → `slides/cover_16x9.png` (1920×1080)
-- Slide deck PDF → `slides/SecondListen_slides.pdf` (11 pages, 16:9)
+- Slide deck PDF → `slides/SecondListen_slides.pdf` (10 pages, 16:9)
 - Demo video → `demo/SecondListen_demo_v8.mp4` (3:44, 1080p)
 
 ## Submission links (verified)
