@@ -123,6 +123,14 @@ def release_public_operation(operation, reservation):
             pass
 
 
+def cross_origin_request(headers, method):
+    """Return whether request metadata indicates an unsafe cross-site call."""
+    origin = headers.get('Origin')
+    site = headers.get('Sec-Fetch-Site', '').lower()
+    cross_site_write = site == 'cross-site' and method.upper() not in ('GET', 'HEAD', 'OPTIONS')
+    return cross_site_write or (origin and urlsplit(origin).netloc != headers.get('Host'))
+
+
 def public_agent(agent):
     copied = copy.deepcopy(agent)
     for tool in copied.get('tools', []):
@@ -281,9 +289,15 @@ class Handler(BaseHTTPRequestHandler):
         self._send(status, json.dumps(body, ensure_ascii=False).encode('utf-8'))
 
     def _authorized(self):
-        origin = self.headers.get('Origin')
-        if (self.headers.get('Sec-Fetch-Site') == 'cross-site'
-                or (origin and urlsplit(origin).netloc != self.headers.get('Host'))):
+        # Some privacy-focused browsers and embedded viewers label a page's
+        # same-origin GET fetches as ``cross-site`` when the page was opened
+        # from another site (for example, a GitHub repository link).  A hard
+        # rejection on that metadata made the public demo fail before a voice
+        # session could start.  Keep the strong Origin/Host check, and keep
+        # blocking cross-site state-changing requests; GET responses remain
+        # protected by the browser's same-origin policy and we do not emit CORS
+        # headers.
+        if cross_origin_request(self.headers, self.command):
             self._json(403, {'error': 'Cross-origin requests are not allowed'})
             return False
         if os.environ.get('REQUIRE_HTTPS') == '1' and self.headers.get('Host', '').split(':')[0] not in ('127.0.0.1', 'localhost', '::1'):

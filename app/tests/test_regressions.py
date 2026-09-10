@@ -133,6 +133,17 @@ class RegressionTests(unittest.TestCase):
                 self.assertIsNotNone(server.reserve_public_operation('token', f'visitor-{index}', now=index))
             self.assertIsNone(server.reserve_public_operation('token', 'visitor-overflow', now=10))
 
+    def test_cross_origin_guard_allows_public_get_but_blocks_cross_site_writes(self):
+        spec = importlib.util.spec_from_file_location(
+            'review_server_origin_guard', ROOT / 'deployment' / 'browser' / 'server.py')
+        server = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(server)
+        same_host = {'Host': 'second-listen-wcap.onrender.com', 'Sec-Fetch-Site': 'cross-site'}
+        self.assertFalse(server.cross_origin_request(same_host, 'GET'))
+        self.assertTrue(server.cross_origin_request(same_host, 'POST'))
+        mismatch = {'Host': 'second-listen-wcap.onrender.com', 'Origin': 'https://example.com'}
+        self.assertTrue(server.cross_origin_request(mismatch, 'GET'))
+
 
 if __name__ == '__main__':
     unittest.main()
